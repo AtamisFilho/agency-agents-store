@@ -27,7 +27,7 @@ ui = json.loads(seg_ui)
 check("283 agentes no payload", len(d["agents"]) == 283)
 check("18 divisões", len(d["divisions"]) == 18)
 check("16 tools", len(d["tools"]) == 16)
-check("versão 2.1.0", d["version"] == "2.1.0")
+check("versão 2.1.1", d["version"] == "2.1.1")
 check("repo correto", d["ourRepo"] == "AtamisFilho/agency-agents-store")
 
 # 4. i18n: 5 idiomas × 283 × (desc + 4 exemplos) + when
@@ -67,6 +67,11 @@ check("squads ⊂ catálogo", set(d["squads"]["pre-lancamento"]["slugs"]) <= slu
 
 # 9. sem marcadores de conflito de merge no HTML
 check("sem marcadores de conflito", "<<<<<<<" not in h and ">>>>>>>" not in h)
+
+# 9b. badge de atualização EXISTE no HTML (regressão: JS usava getElementById("updBadge")
+#     sem o elemento existir — o aviso de nova versão nunca aparecia)
+check("elemento #updBadge existe", 'id="updBadge"' in h)
+check("elemento #btnRecheck existe", 'id="btnRecheck"' in h)
 
 # 10. todos os caminhos de arquivo são relativos e seguros (nada de /abs nem ..)
 bad_paths = [a["file"] for a in d["agents"] if a["file"].startswith("/") or ".." in a["file"].split("/")]

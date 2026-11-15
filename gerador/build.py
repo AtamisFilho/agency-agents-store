@@ -9,7 +9,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DADOS = REPO / "dados"
-GUIA_VERSION = "2.1.0"
+GUIA_VERSION = "2.1.1"
 OUR_REPO = "AtamisFilho/agency-agents-store"
 
 agents = json.load(open(DADOS / "agents.json"))
@@ -531,6 +531,8 @@ kbd{background:var(--chip);border:1px solid var(--line);border-radius:5px;paddin
 .tool button:hover{background:var(--accent);color:#fff}
 .mActions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 .btn{border:0;border-radius:10px;padding:10px 16px;font-size:14px;cursor:pointer;font-weight:600}
+.badge{display:inline-flex;align-items:center;border:0;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;background:#f5a623;color:#1a1a1a;animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 .btn.primary{background:var(--accent);color:#fff}
 .btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
 .btn.primary:hover{filter:brightness(1.08)}
@@ -609,6 +611,7 @@ footer{margin-top:44px;color:var(--muted);font-size:12.5px;text-align:center}
   <div class="mActions noprint">
     <button class="btn primary" id="btnWizard"></button>
     <button class="btn ghost" id="btnRecheck"></button>
+    <button class="badge" id="updBadge" hidden></button>
   </div>
 </div>
 
