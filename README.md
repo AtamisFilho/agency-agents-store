@@ -1,30 +1,32 @@
-# 🧭 Guia de Especialistas — Agency Agents
+# 🧭 Agency Agents Store — Specialist Guide & Installers
 
-**Um guia em HTML + instaladores para trazer 283 especialistas de IA para as suas ferramentas de código** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity e outras).
+**An HTML guide + installers that bring 283 AI specialists into your coding tools** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity and more).
 
-Feito para quem programa "de ouvido" (*vibe coder*) e quer uma equipe de especialistas digitais trabalhando junto — sem jargão, sem burocracia.
+Built for "vibe coders" who want a team of digital specialists working alongside them — no jargon, no fuss.
 
-> Baseado no catálogo open source [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) (MIT) e no instalador [Agency Agents App](https://github.com/msitarzewski/agency-agents-app). O catálogo e os instaladores deste projeto são adaptados e traduzidos para leigos em PT-BR.
+> Based on the open source catalog [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) (MIT) and the [Agency Agents App](https://github.com/msitarzewski/agency-agents-app). This project packages, translates and simplifies them for beginners.
+
+**🌐 Read this in:** [English](README.md) · [Português](README.pt-BR.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md)
 
 ---
 
-## O que você encontra aqui
+## What's inside
 
-| Arquivo/pasta | O que é |
+| File/folder | What it is |
 |---|---|
-| `guia-especialistas-agencia.html` | **O guia.** Abra com dois cliques — funciona offline. Tem busca, filtros, painel da sua máquina e explica cada especialista em português simples, com 4 situações reais de uso. |
-| `instaladores/instalar-linux.sh` | Instalador para **Linux e macOS**. |
-| `instaladores/instalar-windows.ps1` | Instalador para **Windows** (pede só o Git for Windows). |
-| `gerador/build.py` | Gera o guia a partir dos dados em `dados/` (para manutenção). |
-| `dados/` | Catálogo traduzido + situações reais (JSONs). |
+| `guia-especialistas-agencia.html` | **The guide.** Double-click to open — works offline. Search, filters, a "your machine" panel, and every specialist explained in plain language with 4 real-world usage situations. Available in English, Portuguese, Spanish, French and German. |
+| `instaladores/instalar-linux.sh` | Installer for **Linux and macOS**. |
+| `instaladores/instalar-windows.ps1` | Installer for **Windows** (requires only Git for Windows). |
+| `gerador/build.py` | Rebuilds the guide from `dados/` (for maintenance). |
+| `dados/` | Translated catalog + real-world situations (JSON). |
 
-## Como começar (5 minutos)
+## Getting started (5 minutes)
 
-### 1. Baixe o guia
-Clique em **Code → Download ZIP** (ou clone o repositório) e abra o `guia-especialistas-agencia.html` — já dá para navegar nos 283 especialistas sem instalar nada.
+### 1. Get the guide
+Click **Code → Download ZIP** (or clone the repository) and open `guia-especialistas-agencia.html` — you can browse all 283 specialists without installing anything. Pick your language in the top-right selector.
 
-### 2. Rode o instalador (uma vez)
-Ele detecta quais ferramentas você tem (Claude Code, ZCode, Codex…), pergunta onde instalar e quantos especialistas trazer, faz **backup** do que já existe e, no fim, o guia mostra o painel da sua máquina atualizado.
+### 2. Run the installer (once)
+It detects which tools you have (Claude Code, ZCode, Codex…), **asks your language**, asks where to install and how many specialists to bring, **backs up** anything it touches, and the guide's machine panel updates itself at the end.
 
 **Linux/macOS:**
 ```bash
@@ -32,65 +34,72 @@ cd instaladores
 ./instalar-linux.sh
 ```
 
-**Windows** (PowerShell — pré-requisito: [Git for Windows](https://git-scm.com/download/win)):
+**Windows** (PowerShell — prerequisite: [Git for Windows](https://git-scm.com/download/win)):
 ```powershell
 cd instaladores
-Set-ExecutionPolicy -Scope Process Bypass   # se pedirem
+Set-ExecutionPolicy -Scope Process Bypass   # if prompted
 .\instalar-windows.ps1
 ```
 
-### 3. Instale por dentro do guia (opcional)
-No guia, o botão **“➕ Instalar especialistas numa ferramenta”** pergunta *onde* e *quem* (squad pré-lançamento, squad de treino, todos, ou por área) e gera um `plano-agencia.json`. Rode:
+### 3. Install from inside the guide (optional)
+In the guide, the button **"➕ Install specialists into a tool"** asks *where* and *who* (pre-launch squad, training squad, all 283, or by division) and generates an `agency-plan.json`. Then run:
 
 ```bash
-./instalar-linux.sh --plano plano-agencia.json        # Linux/macOS
-.\instalar-windows.ps1 -Plano plano-agencia.json      # Windows
+./instalar-linux.sh --plan agency-plan.json        # Linux/macOS
+.\instalar-windows.ps1 -Plan agency-plan.json      # Windows
 ```
 
-## O que o instalador faz (e não faz)
+You can also pick the language non-interactively: `--lang en|pt|es|fr|de` (or `-Lang` on Windows).
 
-✅ Detecta ferramentas instaladas e o sistema operacional
-✅ Baixa/atualiza o catálogo oficial para `~/.agency-agents`
-✅ Converte os agentes com o **conversor oficial** (byte a byte igual)
-✅ Faz **backup** em `~/.agency-agents-backup/` antes de sobrescrever qualquer coisa
-✅ Gera `guia-status.js` ao lado do guia (é o que alimenta o painel da máquina)
-❌ **Não** instala ferramentas que você não tem (só configura as que existem ou as compatíveis)
-❌ **Não** manda nada para a internet (só o guia, quando você pede, confere releases no GitHub)
+## What the installer does (and doesn't)
 
-## Atualizações automáticas
+✅ Detects installed tools and your operating system
+✅ Asks your language — everything follows it, including the specialists' descriptions
+✅ Downloads/updates the official catalog to `~/.agency-agents`
+✅ Converts agents with the **official converter** (byte-identical output)
+✅ **Backs up** to `~/.agency-agents-backup/` before overwriting anything
+✅ Writes `guia-status.js` next to the guide (it feeds the machine panel)
+❌ **Does not** install tools you don't have (only configures existing/compatible ones)
+❌ **Does not** send anything to the internet (only the guide, when you ask, checks GitHub releases)
 
-O guia confere (a cada 24h ou quando você clicar em **🔄 Verificar atualizações**) os releases oficiais do catálogo/app e deste projeto. Se algo novo sair, aparece um selo no topo.
+## Automatic updates
 
-## Como usar os especialistas
+The guide checks (every 24h or when you click **🔄 Check for updates**) the official releases of the catalog, the app and this project. If something new ships, a badge appears at the top.
 
-Depois de instalados, os especialistas aparecem nas suas ferramentas:
+## Using the specialists
 
-- **Claude Code / ZCode / Codex / Gemini CLI…** — cite o nome dele no pedido: *“use o code-reviewer para revisar essa mudança”*.
-- **No ZCode**, abra a sessão na pasta do projeto e veja **Settings → Subagents**.
-- **Cursor / Aider / Windsurf** — instalam por *projeto* (dentro da pasta do repositório).
+Once installed, specialists show up in your tools:
 
-Guia completo de comandos, exemplos e regras de ouro está **dentro do próprio HTML**.
+- **Claude Code / ZCode / Codex / Gemini CLI…** — mention the name in your prompt: *"use the code-reviewer to review this change"*.
+- **In ZCode**, open a session in the project folder and check **Settings → Subagents**.
+- **Cursor / Aider / Windsurf** — install per *project* (inside the repository folder).
 
-## Ferramentas suportadas
+The guide itself has the full playbook: how to call, examples, and the five golden rules.
 
-| Ferramenta | Escopo | Destino |
+## Supported tools
+
+| Tool | Scope | Destination |
 |---|---|---|
-| Claude Code | usuário | `~/.claude/agents/*.md` |
-| ZCode | usuário | `~/.zcode/agents/*.md` |
-| Codex CLI | usuário | `~/.codex/agents/*.toml` (Windows: WSL) |
-| Gemini CLI | usuário | `~/.gemini/agents/*.md` |
-| GitHub Copilot | usuário | `~/.github/agents/*.md` |
-| Qwen Code | usuário | `~/.qwen/agents/*.md` |
-| opencode | usuário | `~/.config/opencode/agents/*.md` |
-| Antigravity | usuário | `~/.gemini/config/skills/<slug>/SKILL.md` |
-| Osaurus | usuário | `~/.osaurus/skills/…` (só macOS) |
-| Kimi CLI | usuário | `~/.config/kimi/agents/<slug>/` (Windows: WSL) |
-| Cursor / Aider / Windsurf | por projeto | dentro da pasta do repositório |
+| Claude Code | user | `~/.claude/agents/*.md` |
+| ZCode | user | `~/.zcode/agents/*.md` |
+| Codex CLI | user | `~/.codex/agents/*.toml` (Windows: WSL) |
+| Gemini CLI | user | `~/.gemini/agents/*.md` |
+| GitHub Copilot | user | `~/.github/agents/*.md` |
+| Qwen Code | user | `~/.qwen/agents/*.md` |
+| opencode | user | `~/.config/opencode/agents/*.md` |
+| Antigravity | user | `~/.gemini/config/skills/<slug>/SKILL.md` |
+| Osaurus | user | `~/.osaurus/skills/…` (macOS only) |
+| Kimi CLI | user | `~/.config/kimi/agents/<slug>/` (Windows: WSL) |
+| Cursor / Aider / Windsurf | per project | inside the repository folder |
 
-Demais integrações do catálogo (Mistral Vibe, DeepSeek Harness, OpenClaw…) funcionam via renderizador oficial; para elas, prefira o [Agency Agents App](https://github.com/msitarzewski/agency-agents-app/releases).
+Other catalog integrations (Mistral Vibe, DeepSeek Harness, OpenClaw…) work through the official converter; for those, prefer the [Agency Agents App](https://github.com/msitarzewski/agency-agents-app/releases).
 
-## Licenças e créditos
+## Languages
 
-- Este projeto: **MIT** (veja `LICENSE`).
-- Catálogo e conversor: [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) — MIT, de Michael Sitarzewski. Este projeto apenas empacota, traduz e simplifica para leigos.
-- Descrições e situações de uso foram traduzidas/adaptadas para PT-BR; o texto original em inglês fica disponível no detalhe de cada card do guia.
+The guide and both installers ship in **English, Portuguese, Spanish, French and German** — including every specialist description and all real-world usage situations. Pick the language during installation, or switch anytime in the guide (top-right selector).
+
+## Licenses & credits
+
+- This project: **MIT** (see `LICENSE`).
+- Catalog and converter: [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) — MIT, by Michael Sitarzewski. This project only packages, translates and simplifies it for beginners.
+- Descriptions and usage situations were translated/adapted; the original English text is available in each card's details.
