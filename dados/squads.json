@@ -1,0 +1,76 @@
+{
+ "pre-lancamento": {
+  "label": "Squad pré-lançamento (12)",
+  "agentes": [
+   {
+    "slug": "accessibility-auditor",
+    "file": "testing/testing-accessibility-auditor.md"
+   },
+   {
+    "slug": "api-tester",
+    "file": "testing/testing-api-tester.md"
+   },
+   {
+    "slug": "application-security-engineer",
+    "file": "security/security-appsec-engineer.md"
+   },
+   {
+    "slug": "code-reviewer",
+    "file": "engineering/engineering-code-reviewer.md"
+   },
+   {
+    "slug": "devops-automator",
+    "file": "engineering/engineering-devops-automator.md"
+   },
+   {
+    "slug": "evidence-collector",
+    "file": "testing/testing-evidence-collector.md"
+   },
+   {
+    "slug": "penetration-tester",
+    "file": "security/security-penetration-tester.md"
+   },
+   {
+    "slug": "performance-benchmarker",
+    "file": "testing/testing-performance-benchmarker.md"
+   },
+   {
+    "slug": "reality-checker",
+    "file": "testing/testing-reality-checker.md"
+   },
+   {
+    "slug": "sprint-prioritizer",
+    "file": "product/product-sprint-prioritizer.md"
+   },
+   {
+    "slug": "test-automation-engineer",
+    "file": "testing/testing-test-automation-engineer.md"
+   },
+   {
+    "slug": "threat-detection-engineer",
+    "file": "security/security-threat-detection-engineer.md"
+   }
+  ]
+ },
+ "treino": {
+  "label": "Squad de treino (4)",
+  "agentes": [
+   {
+    "slug": "api-tester",
+    "file": "testing/testing-api-tester.md"
+   },
+   {
+    "slug": "code-reviewer",
+    "file": "engineering/engineering-code-reviewer.md"
+   },
+   {
+    "slug": "reality-checker",
+    "file": "testing/testing-reality-checker.md"
+   },
+   {
+    "slug": "sprint-prioritizer",
+    "file": "product/product-sprint-prioritizer.md"
+   }
+  ]
+ }
+}
