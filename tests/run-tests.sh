@@ -409,6 +409,22 @@ else
 fi
 rm -rf "$TH"; clean_repo_side_effects
 
+# ---------- 26. MÁQUINA LIMPA: instalação com --lang clona e preserva o config ----------
+# regressão v2.2.0/2.2.1: save_lang criava ~/.agency-agents (com config) ANTES do clone
+# e `git clone` em diretório não-vazio falhava — a primeira instalação real quebrava.
+TH=/tmp/aa-h-fresh; rm -rf "$TH"; mkdir -p "$TH"   # HOME sem catálogo, sem nada
+HOME="$TH" bash "$INSTALLER" --lang pt --tool zcode --squad treino </dev/null >/tmp/aa-out-fresh 2>&1
+rc=$?
+n=$(ls "$TH/.zcode/agents/" 2>/dev/null | wc -l)
+if [[ $rc -eq 0 && "$n" == "4" ]] && [[ -d "$TH/.agency-agents/.git" ]] \
+   && grep -q "^lang=pt$" "$TH/.agency-agents/config" 2>/dev/null \
+   && grep -q "Especialistas instalados em ZCode" /tmp/aa-out-fresh; then
+  PASS=$((PASS+1)); echo "PASS máquina limpa: clone mesclado com config de idioma, instalação OK"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("fresh-machine"); echo "FAIL máquina limpa (rc=$rc, n=$n)"; head -8 /tmp/aa-out-fresh | sed 's/^/    /'
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
 # ---------- limpeza ----------
 rm -rf "$TESTCAT" /tmp/aa-out-* /tmp/aa-badplan.json /tmp/aa-trav.json /tmp/aa-h-* /tmp/aa-list-err /tmp/aa-json-err 2>/dev/null || true
 clean_repo_side_effects

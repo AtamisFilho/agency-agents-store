@@ -66,13 +66,13 @@ jobs:
           python3 -m py_compile instaladores/agency-install.py gerador/build.py
           mkdir -p /tmp/smoke-home
           bash instaladores/instalar-linux.sh --lang en --status --json </dev/null | python3 -c '
-            import json, sys
-            d = json.load(sys.stdin)
-            assert d["lang"] == "en" and len(d["tools"]) >= 13'
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d["lang"] == "en" and len(d["tools"]) >= 13'
           bash instaladores/instalar-linux.sh --list </dev/null | python3 -c '
-            import json, sys
-            d = json.load(sys.stdin)
-            assert d["catalog"] is None and len(d["tools"]) >= 13'
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d["catalog"] is None and len(d["tools"]) >= 13'
 
   windows:
     # o PS1 nunca era EXECUTADO em lugar nenhum (só Parser) — é onde os bugs do
@@ -105,5 +105,6 @@ jobs:
           $plan = "$env:RUNNER_TEMP\smoke-plan.json"
           Set-Content $plan -Encoding UTF8 -Value '{"ferramentas":["zcode"],"agentes":[{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"},{"slug":"reality-checker","file":"testing/testing-reality-checker.md"}]}'
           powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -Lang en -Plan $plan
-          if (-not (Test-Path "$env:USERPROFILE\.zcode\agents\code-reviewer.md")) { Write-Error "agente não instalado"; exit 1 }
-          Write-Host "instalação Windows OK"
+          if (-not (Test-Path "$env:USERPROFILE\.zcode\agents\code-reviewer.md")) { Write-Error "agent not installed"; exit 1 }
+          if (-not (Test-Path "$env:USERPROFILE\.agency-agents\config")) { Write-Error "lang config missing after fresh install"; exit 1 }
+          Write-Host "Windows install OK"

@@ -147,6 +147,11 @@ for _stream in (sys.stdout, sys.stderr):
         _stream.reconfigure(errors="replace")
     except (AttributeError, OSError):
         pass
+try:  # consumidor de pipe fechado (ex.: `--list | head`) não vira BrokenPipeError no fim
+    import signal
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+except (ImportError, AttributeError, OSError):
+    pass
 
 
 def say(text):
@@ -330,8 +335,21 @@ def ensure_catalog(allow_network: bool) -> bool:
     say(msg("cat_clone"))
     if not shutil.which("git"):
         die(msg("need_git"))
-    if run_git("clone", "--depth", "1", CATALOG_REPO, str(CATALOG_DIR)).returncode != 0:
+    # clona em irmão temporário e mescla: ~/.agency-agents pode já existir
+    # (ex.: config de idioma salvo antes do clone) e git clone exige dir vazio
+    tmp = CATALOG_DIR.with_name(f".agency-agents.new-{os.getpid()}")
+    shutil.rmtree(tmp, ignore_errors=True)
+    if run_git("clone", "--depth", "1", CATALOG_REPO, str(tmp)).returncode != 0:
+        shutil.rmtree(tmp, ignore_errors=True)
         die(msg("cat_fail"))
+    CATALOG_DIR.mkdir(parents=True, exist_ok=True)
+    for item in tmp.iterdir():  # preserva o que já existe localmente (config etc.)
+        dst = CATALOG_DIR / item.name
+        if dst.exists():
+            shutil.rmtree(item, ignore_errors=True) if item.is_dir() else item.unlink(missing_ok=True)
+        else:
+            shutil.move(str(item), str(dst))
+    shutil.rmtree(tmp, ignore_errors=True)
     return True
 
 

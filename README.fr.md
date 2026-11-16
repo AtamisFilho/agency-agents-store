@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.1-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.2-blue)](CHANGELOG.md)
 
 **Un guide HTML + des installateurs qui amènent 283 spécialistes de l'IA dans vos outils de programmation** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity et plus encore).
 

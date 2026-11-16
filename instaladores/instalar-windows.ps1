@@ -246,8 +246,20 @@ if (Test-Path (Join-Path $Catalog ".git")) {
   $HaveCatalog = $true
 } elseif (-not ($Status -or $Json -or $List)) {
   Say (Msg "cat_clone")
-  $r = Invoke-Native { & git clone --depth 1 https://github.com/msitarzewski/agency-agents.git $Catalog }
-  if (-not (Test-Path $Catalog) -or $r.Code -ne 0) { Die (Msg "cat_fail") }
+  # clona em irmão temporário e mescla: ~/.agency-agents pode já existir
+  # (ex.: config de idioma salvo antes do clone) e git clone exige dir vazio
+  $tmp = Join-Path (Split-Path -Parent $Catalog) (".agency-agents.new-" + $PID)
+  if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+  $r = Invoke-Native { & git clone --depth 1 https://github.com/msitarzewski/agency-agents.git $tmp }
+  if (-not (Test-Path (Join-Path $tmp ".git")) -or $r.Code -ne 0) {
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    Die (Msg "cat_fail")
+  }
+  New-Item -ItemType Directory -Force -Path $Catalog | Out-Null
+  Get-ChildItem $tmp | ForEach-Object {
+    if (-not (Test-Path (Join-Path $Catalog $_.Name))) { Move-Item $_.FullName (Join-Path $Catalog $_.Name) }
+  }
+  Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
   $HaveCatalog = $true
 } else {
   Warn (MsgF "cat_status_missing" @($Catalog))

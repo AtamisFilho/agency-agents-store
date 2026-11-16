@@ -5,6 +5,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions are tagged `vX.Y.Z` and **must equal** `version` in `dados/meta.json`
 (that is also the version the guide's update badge compares against).
 
+## [2.2.2] — 2026-11-16
+
+Hotfix: a CI recém-adicionada (job Windows que executa o instalador de verdade) pegou um
+bug **de máquina limpa presente desde a v2.2.0** que nenhum teste nem a revisão de código
+cobriam — todos os cenários de teste pré-semeavam o catálogo.
+
+### Fixed
+- **Primeira instalação em máquina limpa falhava no clone** (Linux/macOS **e** Windows):
+  a persistência do idioma criava `~/.agency-agents/` (com o `config`) *antes* do clone, e
+  `git clone` exige diretório de destino vazio → `fatal: destination path already exists`.
+  Agora o clone acontece num diretário irmão temporário e é **mesclado** ao destino,
+  preservando arquivos locais (como o config de idioma). Novo teste de regressão
+  "máquina limpa" na suíte (instalação real com `--lang` em HOME sem catálogo).
+- CI: `IndentationError` no smoke Python 3.8 (código inline com indentação extra no YAML);
+  strings do step Windows em ASCII puro (o 5.1 lê o script gerado como ANSI).
+- Driver: consumidor de pipe fechado (`--list | head`) não gera mais `BrokenPipeError`
+  no encerramento (`SIGPIPE` → `SIG_DFL`).
+
 ## [2.2.1] — 2026-11-16
 
 Correções da revisão de código pós-lançamento da 2.2.0 (veredito: "precisa de correção" — 4 achados altos, 2 confirmados empiricamente).
