@@ -1104,7 +1104,9 @@ const ASSETS = [
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await Promise.allSettled(ASSETS.map((u) => cache.add(new Request(u, { cache: "reload" }))));
+    // Promise.all (não allSettled): se um asset crítico falhar, a instalação do SW
+    // FALHA → o browser mantém o SW antigo e o cache bom intacto (ALTO-1 da revisão)
+    await Promise.all(ASSETS.map((u) => cache.add(new Request(u, { cache: "reload" }))));
     self.skipWaiting();
   })());
 });
@@ -1112,7 +1114,10 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
-    await Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n)));
+    // só apaga caches DESTE app — nunca caches de terceiros na mesma origem
+    await Promise.all(
+      names.filter((n) => n.startsWith("agencia-guia-") && n !== CACHE).map((n) => caches.delete(n))
+    );
     await self.clients.claim();
   })());
 });
@@ -1123,11 +1128,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;  // checagem de updates (GitHub API) vai direto à rede
   if (req.mode === "navigate") {
-    // network-first: online pega o guia novo na hora; offline cai no cache
+    // network-first: online pega o guia novo na hora; offline cai no cache.
+    // Só cacheia resposta BOA — 404/5xx transitório do host não substitui a última cópia boa.
     event.respondWith(
       fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
+        if (res.ok && res.type === "basic") {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
         return res;
       }).catch(() => caches.match(req).then((r) => r || caches.match(ASSETS[1])))
     );
@@ -1165,10 +1173,12 @@ for _icon in ("icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-to
         sys.exit(f"pwa-icons/{_icon} ausente — rode primeiro: python3 gerador/gen_icons.py")
 
 html = (HTML
-        .replace("__PAYLOAD__", payload_json)
-        .replace("__UI__", ui_json)
+        # PWA primeiro: se um dado contiver a literal "__PAYLOAD__" etc., ela sobrevive
+        # e é substituída por último — dados nunca conseguem injetar marcador vivo
         .replace("__PWA_HEAD__", PWA_HEAD)
-        .replace("__PWA_REG__", PWA_REG))
+        .replace("__PWA_REG__", PWA_REG)
+        .replace("__PAYLOAD__", payload_json)
+        .replace("__UI__", ui_json))
 out1 = REPO / "guia-especialistas-agencia.html"
 out1.write_text(html, encoding="utf-8")
 docs = Path.home() / "Documentos" / "guia-especialistas-agencia.html"

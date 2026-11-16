@@ -67,7 +67,8 @@
     "render_failed": "render {0}: converter failed",
     "unsafe_path": "unsafe path ignored: {0}",
     "cygpath_failed": "cygpath failed — reinstall Git for Windows",
-    "project_only_note": "{0} is a per-project tool — use --dir <project>; installing into the home folder anyway."
+    "project_only_note": "{0} is a per-project tool — use --dir <project>; installing into the home folder anyway.",
+    "open_failed": "Could not open the guide (no file association for .html) — open it manually."
   },
   "pt": {
     "pick_lang": "Escolha o seu idioma:",
@@ -126,7 +127,8 @@
     "render_failed": "render {0}: o conversor falhou",
     "unsafe_path": "caminho inseguro ignorado: {0}",
     "cygpath_failed": "cygpath falhou — reinstale o Git for Windows",
-    "project_only_note": "{0} é uma ferramenta por projeto — use --dir <projeto>; instalando na pasta home mesmo assim."
+    "project_only_note": "{0} é uma ferramenta por projeto — use --dir <projeto>; instalando na pasta home mesmo assim.",
+    "open_failed": "Não consegui abrir o guia (sem associação para .html) — abra manualmente."
   },
   "es": {
     "pick_lang": "Elige tu idioma:",
@@ -185,7 +187,8 @@
     "render_failed": "render {0}: el convertidor falló",
     "unsafe_path": "ruta insegura ignorada: {0}",
     "cygpath_failed": "cygpath falló — reinstala Git for Windows",
-    "project_only_note": "{0} es una herramienta por proyecto — usa --dir <proyecto>; instalando en la carpeta home de todos modos."
+    "project_only_note": "{0} es una herramienta por proyecto — usa --dir <proyecto>; instalando en la carpeta home de todos modos.",
+    "open_failed": "No pude abrir la guía (sin asociación para .html) — ábrela manualmente."
   },
   "fr": {
     "pick_lang": "Choisissez votre langue :",
@@ -244,7 +247,8 @@
     "render_failed": "render {0} : échec du convertisseur",
     "unsafe_path": "chemin dangereux ignoré : {0}",
     "cygpath_failed": "échec de cygpath — réinstallez Git for Windows",
-    "project_only_note": "{0} est un outil par projet — utilisez --dir <projet> ; installation dans le dossier home quand même."
+    "project_only_note": "{0} est un outil par projet — utilisez --dir <projet> ; installation dans le dossier home quand même.",
+    "open_failed": "Impossible d'ouvrir le guide (aucune association pour .html) — ouvrez-le manuellement."
   },
   "de": {
     "pick_lang": "Wählen Sie Ihre Sprache:",
@@ -303,6 +307,7 @@
     "render_failed": "render {0}: Konverter fehlgeschlagen",
     "unsafe_path": "unsicherer Pfad ignoriert: {0}",
     "cygpath_failed": "cygpath fehlgeschlagen — Git for Windows neu installieren",
-    "project_only_note": "{0} ist ein Projekt-Tool — benutze --dir <projekt>; Installation trotzdem in den Home-Ordner."
+    "project_only_note": "{0} ist ein Projekt-Tool — benutze --dir <projekt>; Installation trotzdem in den Home-Ordner.",
+    "open_failed": "Guide konnte nicht geöffnet werden (keine .html-Zuordnung) — bitte manuell öffnen."
   }
 }

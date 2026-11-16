@@ -295,8 +295,8 @@ $TOOLS = @(
   @{ id="osaurus";     label="Osaurus";        kind="rendered"; dest=".osaurus\skills";           compat="nao";  projectOnly=$false; detect=@(".osaurus");  kebab="osaurus";     sub="skills"; mode="pasta" },
   @{ id="kimi";        label="Kimi CLI";       kind="rendered"; dest=".config\kimi\agents";       compat="wsl";  projectOnly=$false; detect=@(".config\kimi"); kebab="kimi";      sub="agents"; mode="pasta" },
   @{ id="cursor";      label="Cursor";         kind="rendered"; dest=".cursor\rules";             compat="sim";  projectOnly=$true;  detect=@(".cursor");  kebab="cursor";    sub="rules";  mode="arquivo" },
-  @{ id="aider";       label="Aider";          kind="roster";   dest="CONVENTIONS.md";            compat="wsl";  projectOnly=$true;  detect=@(); kebab="aider";     rosterFile="CONVENTIONS.md" },
-  @{ id="windsurf";    label="Windsurf";       kind="roster";   dest=".windsurfrules";            compat="sim";  projectOnly=$true;  detect=@(".windsurf"); kebab="windsurf"; rosterFile=".windsurfrules" }
+  @{ id="aider";       label="Aider";          kind="roster";   dest="CONVENTIONS.md";            compat="wsl";  projectOnly=$true;  detect=@("CONVENTIONS.md"); kebab="aider";     rosterFile="CONVENTIONS.md" },
+  @{ id="windsurf";    label="Windsurf";       kind="roster";   dest=".windsurfrules";            compat="sim";  projectOnly=$true;  detect=@(".windsurfrules"); kebab="windsurf"; rosterFile=".windsurfrules" }
 )
 function Test-ToolInstalled($t) {
   ($t.detect | Where-Object { Test-Path (Join-Path $env:USERPROFILE $_) }).Count -gt 0
@@ -308,7 +308,7 @@ function Get-AgencyCount($t, $base, $stems) {
   if (-not $stems -or $stems.Count -eq 0) { return 0 }
   $d = Join-Path $base ($t.dest -replace "/", "\")
   if (-not (Test-Path $d)) { return 0 }
-  if ($t.kind -eq "roster") { return 1 }   # roster = 1 arquivo-índice (B2)
+  if ($t.kind -eq "roster") { if (Test-Path $d -PathType Leaf) { return 1 } else { return 0 } }   # roster = 1 arquivo (B2; divergência BAIXO-5: só arquivo conta)
   if (Test-Path $d -PathType Leaf) { if ($stems -contains ([IO.Path]::GetFileNameWithoutExtension($d))) { return 1 } else { return 0 } }
   $n = 0
   foreach ($f in (Get-ChildItem $d -Recurse -File -ErrorAction SilentlyContinue)) {
@@ -502,7 +502,14 @@ function Uninstall-One($t, $keys) {
   $dest = Join-Path $BaseDir ($t.dest -replace "/", "\")
   if ($DryRun) {
     # dry-run também vale para remoção: NADA é movido, só pré-visualizado
-    $n = Get-AgencyCount $t $BaseDir $Stems
+    # (BAIXO-1: com as MESMAS keys efetivas do uninstall real — plano/squad contam)
+    $n = 0
+    foreach ($f in (Get-ChildItem $dest -Recurse -File -ErrorAction SilentlyContinue)) {
+      if (@(".md",".toml",".mdc") -contains $f.Extension -and $keys -contains $f.BaseName) { $n++ }
+    }
+    foreach ($d in (Get-ChildItem $dest -Directory -ErrorAction SilentlyContinue)) {
+      if ($keys -contains $d.Name) { $n++ }
+    }
     Say (MsgF "dry_run_remove" @($t.label, $n))
     return
   }
@@ -608,8 +615,15 @@ if ($plano) {
       $slugs = Get-SquadSlugs $Squad
       $script:Slugs = if ($slugs) { ,$slugs } else { $null }
     } else {
-      $s = Read-Host ("{0}  {1}  {2}  {3}  [1]" -f (Msg "pick_squad"), (Msg "squad1"), (Msg "squad2"), (Msg "squad3"))
-      if (-not $s) { $s = "1" }
+      # BAIXO-3: input inválido re-pergunta (até 3x), igual ao picker de ferramentas
+      $attempts = 0
+      while ($true) {
+        $s = Read-Host "1-3 [1]"
+        if (-not $s -or $s -in @("1","2","3")) { break }
+        $attempts++
+        if ($attempts -ge 3) { $s = "1"; break }
+        Write-Host "  ?!"
+      }
       $key = if ($s -eq "2") { "treino" } elseif ($s -eq "3") { "all" } else { "pre" }
       $slugs = Get-SquadSlugs $key
       $script:Slugs = if ($slugs) { ,$slugs } else { $null }
@@ -660,8 +674,12 @@ if (-not $DryRun) {
     } catch {
       Warn (Msg "status_fail")   # instalação já feita: não aborta por causa do painel
     }
-    # I10: não abre o guia em Status/Uninstall/DryRun nem em sessão não-interativa
-    if (-not ($Status -or $Uninstall) -and [Environment]::UserInteractive) { Say (Msg "opening"); Start-Process (Join-Path $guDir $GuideName) }
+    # I10/MÉDIO-3: não abre em Status/Uninstall/DryRun nem em CI (UserInteractive é true em runners);
+    # Start-Process sem associação .html lança erro terminante — degrada com aviso, nunca mata o fim
+    if (-not ($Status -or $Uninstall) -and [Environment]::UserInteractive -and -not $env:CI) {
+      Say (Msg "opening")
+      try { Start-Process (Join-Path $guDir $GuideName) } catch { Warn (Msg "open_failed") }
+    }
   } else {
     Warn (Msg "guia_not_found")
   }

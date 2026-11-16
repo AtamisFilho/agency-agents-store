@@ -261,6 +261,13 @@ assert d["catalog"] is None, "config-only dir não é catálogo"' 2>/dev/null; t
 else
   FAIL=$((FAIL+1)); FAILED_NAMES+=("list-config-dir"); echo "FAIL --list reportou catálogo falso"
 fi
+# revisão MÉDIO-2: --json com --lang NÃO persiste o idioma (contrato "não escreve nada")
+TH2=/tmp/aa-h-jsonlang; rm -rf "$TH2"; mkdir -p "$TH2"
+HOME="$TH2" bash "$INSTALLER" --status --json --lang pt </dev/null >/dev/null 2>&1
+[[ ! -e "$TH2/.agency-agents/config" ]] \
+  && { PASS=$((PASS+1)); echo "PASS --json --lang pt: config NÃO escrito (contrato JSON)"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("json-lang-persist"); echo "FAIL --json persistiu o idioma — bug MÉDIO-2"; }
+rm -rf "$TH2"
 rm -rf "$TH"; clean_repo_side_effects
 
 # ---------- 16. --tool/--squad não-interativo (CI/scripts) ----------
@@ -523,17 +530,18 @@ n=$(ls "$TH/.zcode/agents/" 2>/dev/null | wc -l)
   || { FAIL=$((FAIL+1)); FAILED_NAMES+=("catalog-nogit"); echo "FAIL catálogo sem .git (rc=$rc, n=$n)"; head -5 /tmp/aa-out-nogit | sed 's/^/    /'; }
 rm -rf "$TH"; clean_repo_side_effects
 
-# ---------- 33. FIX B2 (RED esperado): roster instalado → painel conta 1 ----------
+# ---------- 33. FIX B2 (RED esperado): roster instalado → painel conta 1 E marca detectada ----------
 TH=/tmp/aa-h-roster2; new_home "$TH"
 HOME="$TH" bash "$INSTALLER" --lang en --tool windsurf --squad treino </dev/null >/dev/null 2>&1
 if HOME="$TH" bash "$INSTALLER" --status --json </dev/null 2>/dev/null | python3 -c '
 import json, sys
 d = json.load(sys.stdin)
 w = [t for t in d["tools"] if t["id"] == "windsurf"][0]
-assert w["agentCount"] == 1, f"windsurf agentCount={w[chr(97)+chr(103)+chr(101)+chr(110)+chr(116)+chr(67)+chr(111)+chr(117)+chr(110)+chr(116)]} (esperado 1)"' 2>/dev/null; then
-  PASS=$((PASS+1)); echo "PASS roster no painel: windsurf agentCount=1"
+assert w["agentCount"] == 1, f"agentCount={w}"
+assert w["installed"] is True, f"roster instalado deve marcar a ferramenta como presente: {w}"' 2>/dev/null; then
+  PASS=$((PASS+1)); echo "PASS roster no painel: windsurf agentCount=1 e installed=true"
 else
-  FAIL=$((FAIL+1)); FAILED_NAMES+=("roster-count"); echo "FAIL roster windsurf agentCount!=1 (bug B2 — fix pendente)"
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("roster-count"); echo "FAIL roster windsurf agentCount/installed errados (bug B2)"
 fi
 rm -rf "$TH"; clean_repo_side_effects
 

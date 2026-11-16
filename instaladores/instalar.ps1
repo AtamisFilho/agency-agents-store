@@ -46,4 +46,9 @@ try {
   Die "Download failed: $($_.Exception.Message)"
 }
 
+# ALTO-2: invocar um ARQUIVO .ps1 é sujeito à ExecutionPolicy — e o default de máquina
+# cliente é Restricted (o Unblock-File acima só resolve MOTW sob RemoteSigned).
+# Bypass no escopo Process: não exige admin, não muda a máquina, morre com a sessão.
+try { Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force } catch {}
+
 & (Join-Path $Store "instaladores\instalar-windows.ps1") @Rest

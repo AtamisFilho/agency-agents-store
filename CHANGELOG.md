@@ -7,10 +7,27 @@ versions are tagged `vX.Y.Z` and **must equal** `version` in `dados/meta.json`
 
 ## [2.3.1] — 2026-11-16
 
-Correções vindas de revisão adversarial + bateria exaustiva de testes de branches
-rejected (test-first: 15 blocos novos na suíte; os REDs esperados revelaram os bugs).
+Duas levas de revisão adversarial (code-reviewer com verificação empírica — PowerShell
+real, ícones/ZIP reconstruídos e comparados por SHA, PNGs decodificados) + bateria
+exaustiva de testes de branches rejected, escrita **antes** dos fixes (15 blocos novos;
+os REDs esperados revelaram os bugs — inclusive 2 que nem a revisão manual tinha visto).
 
 ### Fixed
+- **sw.js podia DESTRUIR o estado offline que funcionava** (tríade: install com
+  `allSettled` instalava SW novo com cache incompleto → `activate` apagava o cache
+  antigo bom → navigate cacheava 404/5xx transitório por cima da última cópia boa).
+  Agora: `Promise.all` (falha no pré-cache aborta a instalação e o browser mantém o
+  SW/cache antigos), navigate só cacheia `res.ok && res.type === "basic"`, e o
+  activate só apaga caches `agencia-guia-*` (nunca caches de terceiros na origem).
+- **One-liner Windows (`irm | iex`) falhava na policy Restricted** (default de máquina
+  cliente): invocar o `.ps1` baixado é sujeito à ExecutionPolicy. O bootstrap agora
+  aplica `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` (sem admin,
+  morre com a sessão) e o troubleshooting do README distingue Restricted (use o .cmd /
+  comando manual) de MOTW/RemoteSigned (`Unblock-File`).
+- **sw.js do ZIP pré-cacheava um caminho inexistente** (guia se chama `index.html`
+  dentro do pacote): 404 silencioso no install e fallback offline morto. O
+  `package_pwa.py` reescreve o entry no sw.js empacotado; ZIP também com
+  `create_system` fixo (determinismo independente do SO).
 - **`--tool vibe` (conhecida do catálogo, não integrada) morria com rc=1 e dupla
   mensagem contraditória** ("Unknown tool" + "not supported") — agora avisa e sai
   rc=0, como o mesmo caso dentro de planos. Achado pelos testes, não pela revisão.
@@ -18,6 +35,16 @@ rejected (test-first: 15 blocos novos na suíte; os REDs esperados revelaram os 
   identity**: o instalador copia `<stem>.md` oficial (ex. `engineering-code-reviewer.md`)
   mas a verificação comparava contra o *slug* → reportava instalado como faltando.
   Agora o match usa o mapa slug→stem do catálogo (driver e PS1).
+- **`--status --json --lang` persistia o idioma** no driver (contrato "não escreve
+  nada" quebrado; PS1 já não escrevia) — divergência de plataforma fechada.
+- PS1: `Start-Process` sem associação `.html` (Windows Server/VM) derrubava o script
+  DEPOIS de instalar tudo — agora try/catch com aviso, e o gate de abertura também
+  respeita `$env:CI`; preview do `--dry-run --uninstall` usa as keys efetivas do
+  plano (antes superestimava); roster instalado marca a ferramenta como detectada
+  (`detect` incluía pasta que nunca é criada); picker de squad re-pergunta input
+  inválido (igual ao de ferramentas); roster conta só se o destino é arquivo;
+  `.git` como arquivo (worktree/submodule) reconhecido no driver; ordem dos
+  placeholders do build invertida (dados nunca podem injetar marcador vivo).
 - Revisão anterior (BAIXOs agora corrigidos): roster conta **1** no painel quando o
   arquivo existe (B2); **`--uninstall --plan` remove só os slugs do plano** em vez da
   ferramenta inteira (B3); **`--dry-run` não persiste mais o idioma** (B13); ferramenta
@@ -28,13 +55,6 @@ rejected (test-first: 15 blocos novos na suíte; os REDs esperados revelaram os 
   não abre mais o guia em `-Uninstall`/não-interativo (I10); PS1 roda `-List`/
   `-Status -Json` **sem exigir Git** (B8); `--squad` sem `--tool` no modo interativo
   usa a squad pedida em vez de perguntar de novo.
-- Suíte: +15 blocos (27–41) cobrindo branches rejected inéditos (squad/tool/dir
-  inválidos, planos malformados além dos clássicos — raiz-lista, ferramentas-string,
-  agentes-dict, `C:\…`, slug com backslash, slug vazio —, config com BOM e corrompida,
-  catálogo sem `.git`, symlink escapando do catálogo, backup idempotente, uninstall
-  sem seleção, guia ausente). CI Windows ganhou smokes que **executam os branches
-  rejected do PS1 de verdade** (`-Tool foo`, `-Squad nope`, `-Dir` inexistente,
-  `-DryRun` sem escrita) e o launcher `.cmd`.
 
 ### Added
 - **Alternativa Windows: `instaladores/instalar-windows.cmd`** — duplo clique roda o
@@ -45,8 +65,15 @@ rejected (test-first: 15 blocos novos na suíte; os REDs esperados revelaram os 
 - **Versionamento pinável nos one-liners** (CI/ambientes controlados): `AA_BRANCH=vX.Y.Z`
   antes do one-liner (bash e PowerShell) ou `-Branch vX.Y.Z`.
 - READMEs (5 idiomas): seção "Windows — se um método te der problema" com as 5
-  alternativas (duplo clique .cmd, Unblock-File, comando manual, one-liner com
-  argumentos via arquivo, winget/pin de versão).
+  alternativas + aviso explícito de que instalar executa o conversor do catálogo
+  upstream (modelo de confiança).
+- Suíte: +15 blocos (27–41) cobrindo branches rejected inéditos (squad/tool/dir
+  inválidos, planos malformados além dos clássicos — raiz-lista, ferramentas-string,
+  agentes-dict, `C:\…`, slug com backslash, slug vazio —, config com BOM e corrompida,
+  catálogo sem `.git`, symlink escapando do catálogo, backup idempotente, uninstall
+  sem seleção, guia ausente, JSON sem escrita). CI Windows ganhou smokes que
+  **executam os branches rejected do PS1 de verdade** (`-Tool foo`, `-Squad nope`,
+  `-Dir` inexistente, `-DryRun` sem escrita) e o launcher `.cmd`.
 
 ## [2.3.0] — 2026-11-16
 

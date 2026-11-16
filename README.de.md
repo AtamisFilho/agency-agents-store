@@ -115,6 +115,7 @@ Beispiele:
 ❌ Installiert **keine** Tools, die du nicht hast (konfiguriert nur Vorhandenes/Kompatibles)
 ❌ Nutzt **kein** Netz in den Modi `--status`/`--list`/`--json` (Installieren ja, um den Katalog zu holen)
 ❌ Schickt **nichts** an irgendwen sonst (nur der Guide prüft auf Wunsch GitHub-Releases)
+⚠️ Die Installation führt den **offiziellen Konverter** des Katalogs aus — ein Bash-Skript aus dem Upstream-Repo (wie die Installation eines Pakets aus einer vertrauenswürdigen Quelle).
 
 ## Automatische Updates
 

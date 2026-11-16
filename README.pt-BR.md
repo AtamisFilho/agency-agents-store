@@ -115,6 +115,7 @@ Exemplos:
 ❌ **Não** instala ferramentas que você não tem (só configura as que existem ou as compatíveis)
 ❌ **Não** usa rede nos modos `--status`/`--list`/`--json` (instalar usa, para baixar o catálogo)
 ❌ **Não** manda nada para mais ninguém (só o guia, quando você pede, confere releases no GitHub)
+⚠️ Instalar executa o **conversor oficial** do catálogo — um script bash do repo upstream (como instalar um pacote de uma fonte confiável).
 
 ## Atualizações automáticas
 

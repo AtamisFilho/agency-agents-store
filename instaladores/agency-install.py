@@ -221,11 +221,11 @@ TOOLS = [
     {"id": "aider", "label": "Aider", "kind": "roster", "kebab": "aider",
      "rel": "CONVENTIONS.md", "roster_file": "CONVENTIONS.md",
      "compat": {"linux": "sim", "macos": "sim", "windows": "wsl"}, "project_only": True,
-     "detect_dirs": [], "detect_bin": "aider"},
+     "detect_dirs": ["CONVENTIONS.md"], "detect_bin": "aider"},
     {"id": "windsurf", "label": "Windsurf", "kind": "roster", "kebab": "windsurf",
      "rel": ".windsurfrules", "roster_file": ".windsurfrules",
      "compat": {"linux": "sim", "macos": "sim", "windows": "sim"}, "project_only": True,
-     "detect_dirs": [".windsurf"], "detect_bin": None},
+     "detect_dirs": [".windsurfrules"], "detect_bin": None},
 ]
 TOOL_BY_ID = {t["id"]: t for t in TOOLS}
 
@@ -333,7 +333,8 @@ def run_git(*args, cwd=None) -> subprocess.CompletedProcess:
 
 def ensure_catalog(allow_network: bool) -> bool:
     """True se o catálogo está disponível. --status/--list/--json nunca clonam."""
-    if (CATALOG_DIR / ".git").is_dir():
+    # .git pode ser ARQUIVO em worktree/submodule — exists(), não is_dir() (revisão INFO)
+    if (CATALOG_DIR / ".git").exists():
         if allow_network:
             say(msg("cat_update", str(CATALOG_DIR)))
             if run_git("-C", str(CATALOG_DIR), "pull", "--ff-only").returncode != 0:
@@ -366,7 +367,7 @@ def ensure_catalog(allow_network: bool) -> bool:
 
 
 def catalog_meta():
-    if not (CATALOG_DIR / ".git").is_dir():
+    if not (CATALOG_DIR / ".git").exists():
         return "?", "?"
     c = run_git("-C", str(CATALOG_DIR), "rev-parse", "--short", "HEAD")
     d = run_git("-C", str(CATALOG_DIR), "log", "-1", "--format=%cs")
@@ -745,7 +746,7 @@ def status_object(stems: set[str] | None):
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "os": {"family": OSF, "label": OSL, "arch": ARCH},
         "catalog": ({"path": str(CATALOG_DIR), "commit": commit, "updated": date}
-                    if (CATALOG_DIR / ".git").is_dir() or (CATALOG_DIR / "divisions.json").is_file() else None),
+                    if (CATALOG_DIR / ".git").exists() or (CATALOG_DIR / "divisions.json").is_file() else None),
         "tools": tools,
     }
 
@@ -822,14 +823,14 @@ def detect_locale_lang() -> str | None:
     return None
 
 
-def resolve_lang(cli_lang: str, can_prompt: bool):
+def resolve_lang(cli_lang: str, can_prompt: bool, persist: bool = True):
     global LANG_SEL
     if cli_lang:
         if cli_lang not in LANGS:
             die(f"Invalid language: {cli_lang} (use en, pt, es, fr or de) / "
                 f"Idioma inválido: {cli_lang} (use en, pt, es, fr ou de)")
         LANG_SEL = cli_lang
-        if not DRY_RUN:  # B13: dry-run não escreve nada — nem o config de idioma
+        if persist and not DRY_RUN:  # MÉDIO-2: --json/--list não escrevem; B13: dry-run idem
             save_lang(cli_lang)
         return
     saved = read_saved_lang()
@@ -933,7 +934,9 @@ def main():
 
     if as_json or do_list:
         _JSON_MODE = True
-    resolve_lang(cli_lang, can_prompt=interactive_ok() and not (as_json or do_list))
+    resolve_lang(cli_lang,
+                 can_prompt=interactive_ok() and not (as_json or do_list),
+                 persist=not (as_json or do_list))  # MÉDIO-2: JSON no stdout escreve nada
 
     if dir_arg:
         d = Path(dir_arg).expanduser()
@@ -960,7 +963,7 @@ def main():
     # ---- --list: JSON puro, nunca rede ----
     if do_list:
         squads = load_squads()
-        have_cat = (CATALOG_DIR / ".git").is_dir() or (CATALOG_DIR / "divisions.json").is_file()
+        have_cat = (CATALOG_DIR / ".git").exists() or (CATALOG_DIR / "divisions.json").is_file()
         out = {
             "version": 1,
             "catalog": ({"path": str(CATALOG_DIR), "agents": len(catalog_agents(CATALOG_DIR))}
@@ -1021,7 +1024,12 @@ def main():
         print("  " + msg("squad1"))
         print("  " + msg("squad2"))
         print("  " + msg("squad3"))
-        s = ask("1-3 [1]: ") or "1"
+        # BAIXO-3: input inválido não-vazio re-pergunta (até 3x) — igual ao picker de ferramentas
+        for _ in range(3):
+            s = ask("1-3 [1]: ") or "1"
+            if s in ("1", "2", "3"):
+                break
+            print("  ?!")
         return squad_slugs({"2": "treino", "3": "all"}.get(s, "pre"))
 
     if plan:

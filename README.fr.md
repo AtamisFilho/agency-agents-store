@@ -115,6 +115,7 @@ Exemples :
 ❌ **N'**installe **pas** d'outils que vous n'avez pas (ne configure que l'existant/compatible)
 ❌ **N'**utilise **pas** le réseau en modes `--status`/`--list`/`--json` (installer oui, pour récupérer le catalogue)
 ❌ **N'**envoie **rien** nulle part ailleurs (seul le guide, à votre demande, consulte les releases GitHub)
+⚠️ Installer exécute le **convertisseur officiel** du catalogue — un script bash du dépôt upstream (comme installer un paquet d'une source de confiance).
 
 ## Mises à jour automatiques
 

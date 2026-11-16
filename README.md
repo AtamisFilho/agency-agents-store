@@ -115,6 +115,7 @@ Examples:
 ❌ **Does not** install tools you don't have (only configures existing/compatible ones)
 ❌ **Does not** use the network in `--status`/`--list`/`--json` modes (installs do, to fetch the catalog)
 ❌ **Does not** send anything anywhere else (only the guide, when you ask, checks GitHub releases)
+⚠️ Installing runs the catalog's **official converter** — a bash script from the upstream repo (like installing a package from a trusted source).
 
 ## Automatic updates
 

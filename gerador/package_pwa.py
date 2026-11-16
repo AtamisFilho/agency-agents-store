@@ -77,8 +77,13 @@ for src, arc in FILES:
 with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for src, arc in sorted(entries, key=lambda e: e[1]):
         data = src.read_bytes() if src is not None else HOWTO.encode("utf-8")
+        if arc == "sw.js":
+            # o guia se chama index.html DENTRO do zip: o sw.js precisa pré-cachear
+            # e fazer fallback para o entry real (senão: 404 silencioso + fallback morto)
+            data = data.replace(b'"./guia-especialistas-agencia.html"', b'"./index.html"')
         zi = zipfile.ZipInfo(arc, date_time=(1980, 1, 1, 0, 0, 0))  # determinístico
         zi.compress_type = zipfile.ZIP_DEFLATED
+        zi.create_system = 3        # fixo: determinismo não depende do SO que empacota
         zi.external_attr = 0o644 << 16
         z.writestr(zi, data)
     zi = zipfile.ZipInfo("COMO-HOSPEDAR.md", date_time=(1980, 1, 1, 0, 0, 0))
