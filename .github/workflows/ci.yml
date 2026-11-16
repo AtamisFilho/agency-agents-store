@@ -149,10 +149,13 @@ jobs:
       - name: Smoke — DryRun previews and writes nothing (PS 5.1)
         shell: powershell
         run: |
-          $o = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -DryRun -Tool zcode -Squad pre 2>&1
-          if ($LASTEXITCODE -ne 0) { Write-Error "dry-run failed"; exit 1 }
-          if (Test-Path "$env:USERPROFILE\.zcode") { Write-Error "dry-run wrote .zcode"; exit 1 }
+          # ferramenta que o smoke de instalação real NÃO tocou (lá foi zcode):
+          # se o dry-run escrever, .gemini aparece e o assert pega
+          $o = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -DryRun -Tool geminiCli -Squad pre 2>&1
+          if ($LASTEXITCODE -ne 0) { Write-Error "dry-run failed: $o"; exit 1 }
+          if (Test-Path "$env:USERPROFILE\.gemini\agents") { Write-Error "dry-run wrote .gemini\agents"; exit 1 }
           Write-Host "PS1 dry-run OK"
+          exit 0
 
       - name: Smoke — .cmd launcher (double-click path, args skip pause)
         shell: cmd
