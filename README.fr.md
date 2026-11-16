@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.1-blue)](CHANGELOG.md)
 
 **Un guide HTML + des installateurs qui amènent 283 spécialistes de l'IA dans vos outils de programmation** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity et plus encore).
 
@@ -84,6 +84,15 @@ L'installateur cherche le plan automatiquement dans `.`, `..`, le dossier de l'i
 | `--uninstall` | `-Uninstall` | Retire les spécialistes de l'agence (sauvegarde avant ; garde vos fichiers) |
 | `--dir <chemin>` | `-Dir <chemin>` | Installe dans un dossier de **projet** — active Cursor/Aider/Windsurf |
 | `--lang en\|pt\|es\|fr\|de` | `-Lang en\|pt\|es\|fr\|de` | Langue (mémorisée pour les prochaines fois) |
+
+### Windows — si une méthode vous pose problème
+
+1. **Double-clic** sur `instaladores\instalar-windows.cmd` — lance l'installateur avec `-ExecutionPolicy Bypass` (sans toucher à la stratégie de la machine) et garde la fenêtre ouverte à la fin.
+2. **« Exécution de scripts désactivée »** (fichier venu d'un ZIP) : lancez `Unblock-File .\instaladores\instalar-windows.ps1` une fois, puis relancez normalement.
+3. **Commande manuelle** (ce que fait le .cmd) : `powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1`
+4. **Scripts/CI avec arguments** : la ligne unique `irm … | iex` n'accepte pas d'arguments — enregistrez dans un fichier puis exécutez :
+   `irm https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main/instaladores/instalar.ps1 -OutFile $env:TEMP\aa.ps1; & $env:TEMP\aa.ps1 -Lang fr -Tool zcode -Squad pre`
+5. Sans **Git for Windows** ? `winget install Git.Git`. Pour épingler la version sur des machines contrôlées : `$env:AA_BRANCH = "v2.3.1"` avant la ligne unique.
 
 Exemples :
 ```bash

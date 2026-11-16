@@ -435,6 +435,204 @@ else
 fi
 rm -rf "$TH"; clean_repo_side_effects
 
+# ---------- 27. REJECTED: squad inválida em modo não-interativo ----------
+TH=/tmp/aa-h-sqbad; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --tool zcode --squad xyz </dev/null >/tmp/aa-out-sqbad 2>&1; rc=$?
+if [[ $rc -ne 0 ]] && grep -qi "Invalid squad\|Squad inválida\|Ungültiges Team\|Escouade invalide" /tmp/aa-out-sqbad; then
+  PASS=$((PASS+1)); echo "PASS --squad xyz → err_squad, rc!=0"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("squad-invalid"); echo "FAIL squad inválida deveria rejeitar (rc=$rc)"; head -5 /tmp/aa-out-sqbad | sed 's/^/    /'
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 28. REJECTED/warn: --tool desconhecida, mistura válida+inválida, catalog-supported não integrada ----------
+TH=/tmp/aa-h-toolbad; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --tool foo </dev/null >/tmp/aa-out-toolbad 2>&1; rc=$?
+[[ $rc -ne 0 ]] && grep -qi "Unknown tool\|desconhecida\|unbekanntes Tool\|outil inconnu" /tmp/aa-out-toolbad \
+  && { PASS=$((PASS+1)); echo "PASS --tool foo → tool_unknown, rc!=0"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("tool-unknown"); echo "FAIL --tool foo (rc=$rc)"; head -5 /tmp/aa-out-toolbad | sed 's/^/    /'; }
+HOME="$TH" bash "$INSTALLER" --lang en --tool zcode,foo --squad treino </dev/null >/tmp/aa-out-mix 2>&1; rc=$?
+n=$(ls "$TH/.zcode/agents/" 2>/dev/null | wc -l)
+[[ $rc -eq 0 && "$n" == "4" ]] && grep -qi "Unknown tool\|desconhecida" /tmp/aa-out-mix \
+  && { PASS=$((PASS+1)); echo "PASS --tool zcode,foo → instala zcode (4) e avisa foo, rc=0"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("tool-mixed"); echo "FAIL mistura válida+inválida (rc=$rc, n=$n)"; head -5 /tmp/aa-out-mix | sed 's/^/    /'; }
+HOME="$TH" bash "$INSTALLER" --lang en --tool vibe </dev/null >/tmp/aa-out-vibe 2>&1; rc=$?
+[[ $rc -eq 0 ]] && grep -qi "not supported\|não suportada\|no soportada" /tmp/aa-out-vibe \
+  && { PASS=$((PASS+1)); echo "PASS --tool vibe → unsupported com aviso honesto, rc=0"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("tool-vibe"); echo "FAIL vibe (rc=$rc)"; head -5 /tmp/aa-out-vibe | sed 's/^/    /'; }
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 29. REJECTED: --dir inexistente / arquivo no lugar de pasta ----------
+TH=/tmp/aa-h-dirbad; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --tool cursor --dir "$TH/não-existe" --squad pre </dev/null >/tmp/aa-out-dirbad 2>&1; rc=$?
+[[ $rc -ne 0 ]] && grep -qi "not found\|não encontrado\|no encontrado\|introuvable" /tmp/aa-out-dirbad \
+  && { PASS=$((PASS+1)); echo "PASS --dir inexistente → err_dir, rc!=0"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("dir-bad"); echo "FAIL --dir inválido (rc=$rc)"; head -5 /tmp/aa-out-dirbad | sed 's/^/    /'; }
+echo x > "$TH/um-arquivo.txt"
+HOME="$TH" bash "$INSTALLER" --lang en --tool cursor --dir "$TH/um-arquivo.txt" --squad pre </dev/null >/dev/null 2>&1; rc=$?
+[[ $rc -ne 0 ]] && { PASS=$((PASS+1)); echo "PASS --dir apontando para ARQUIVO → rc!=0"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("dir-file"); echo "FAIL --dir=arquivo aceito (rc=$rc)"; }
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 30. REJECTED: planos malformados além dos clássicos ----------
+TH=/tmp/aa-h-malformed; new_home "$TH"
+try_plan() { # try_plan <nome> <json> <espera rc!=0>
+  local name="$1" json="$2"
+  printf '%s' "$json" > "$TH/p.json"
+  HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/p.json" --status </dev/null >/dev/null 2>&1
+  local rc=$?
+  [[ $rc -ne 0 ]] && { PASS=$((PASS+1)); echo "PASS plano $name → rejected"; } \
+    || { FAIL=$((FAIL+1)); FAILED_NAMES+=("plan-$name"); echo "FAIL plano $name foi ACEITO (rc=0)"; }
+}
+try_plan "raiz-lista"      '[1,2,3]'
+try_plan "ferramentas-str" '{"ferramentas":"zcode","agentes":[]}'
+try_plan "agentes-dict"    '{"ferramentas":["zcode"],"agentes":{"slug":"x","file":"a/b.md"}}'
+try_plan "file-abs-win"    '{"ferramentas":["claudeCode"],"agentes":[{"slug":"x","file":"C:\\etc\\passwd"}]}'
+try_plan "slug-backslash"  '{"ferramentas":["zcode"],"agentes":[{"slug":"a\\b","file":"a/b.md"}]}'
+try_plan "slug-vazio"      '{"ferramentas":["zcode"],"agentes":[{"slug":"","file":"a/b.md"}]}'
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 31. config de idioma: BOM do PowerShell respeitado; config corrompida cai no fallback ----------
+TH=/tmp/aa-h-cfg; rm -rf "$TH"; mkdir -p "$TH/.agency-agents"
+printf '\xef\xbb\xbflang=pt\n' > "$TH/.agency-agents/config"   # BOM como o PS 5.1 grava
+if HOME="$TH" bash "$INSTALLER" --status --json </dev/null 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert d["lang"] == "pt", "esperado pt com BOM"' 2>/dev/null; then
+  PASS=$((PASS+1)); echo "PASS config com BOM → lang=pt respeitado"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("cfg-bom"); echo "FAIL config com BOM ignorada"
+fi
+echo "lang=zz" > "$TH/.agency-agents/config"
+if HOME="$TH" bash "$INSTALLER" --status --json </dev/null 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert d["lang"] == "en", "corrompida deve cair no fallback"' 2>/dev/null; then
+  PASS=$((PASS+1)); echo "PASS config corrompida (lang=zz) → fallback en"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("cfg-bad"); echo "FAIL config corrompida não caiu no fallback"
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 32. catálogo "clone sem .git" (divisions.json presente) → instalação funciona ----------
+TH=/tmp/aa-h-nogit; rm -rf "$TH"; mkdir -p "$TH"
+cp -r "$TESTCAT" "$TH/.agency-agents" && rm -rf "$TH/.agency-agents/.git"
+HOME="$TH" bash "$INSTALLER" --lang en --tool zcode --squad treino </dev/null >/tmp/aa-out-nogit 2>&1; rc=$?
+n=$(ls "$TH/.zcode/agents/" 2>/dev/null | wc -l)
+[[ $rc -eq 0 && "$n" == "4" ]] && { PASS=$((PASS+1)); echo "PASS catálogo sem .git (divisions.json) → 4 instalados"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("catalog-nogit"); echo "FAIL catálogo sem .git (rc=$rc, n=$n)"; head -5 /tmp/aa-out-nogit | sed 's/^/    /'; }
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 33. FIX B2 (RED esperado): roster instalado → painel conta 1 ----------
+TH=/tmp/aa-h-roster2; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --tool windsurf --squad treino </dev/null >/dev/null 2>&1
+if HOME="$TH" bash "$INSTALLER" --status --json </dev/null 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+w = [t for t in d["tools"] if t["id"] == "windsurf"][0]
+assert w["agentCount"] == 1, f"windsurf agentCount={w[chr(97)+chr(103)+chr(101)+chr(110)+chr(116)+chr(67)+chr(111)+chr(117)+chr(110)+chr(116)]} (esperado 1)"' 2>/dev/null; then
+  PASS=$((PASS+1)); echo "PASS roster no painel: windsurf agentCount=1"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("roster-count"); echo "FAIL roster windsurf agentCount!=1 (bug B2 — fix pendente)"
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 34. FIX B3 (RED esperado): --uninstall --plan remove SÓ os slugs do plano ----------
+TH=/tmp/aa-h-unplan; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --tool zcode --squad treino </dev/null >/dev/null 2>&1   # 4 instalados
+cat > "$TH/plano-u.json" <<'EOF'
+{"ferramentas":["zcode"],"agentes":[{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"}]}
+EOF
+HOME="$TH" bash "$INSTALLER" --lang en --uninstall --plan "$TH/plano-u.json" </dev/null >/dev/null 2>&1; rc=$?
+restaram=$(ls "$TH/.zcode/agents/" 2>/dev/null | wc -l)
+if [[ $rc -eq 0 && "$restaram" == "3" && ! -f "$TH/.zcode/agents/code-reviewer.md" && -f "$TH/.zcode/agents/reality-checker.md" ]]; then
+  PASS=$((PASS+1)); echo "PASS uninstall por plano: removeu 1 do plano, preservou os outros 3"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("uninstall-plan"); echo "FAIL uninstall --plan removeu a ferramenta inteira ($restaram restaram) — bug B3"
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 35. FIX B13 (RED esperado): --dry-run NÃO persiste o idioma ----------
+TH=/tmp/aa-h-drylang; new_home "$TH"   # catálogo presente, SEM config
+HOME="$TH" bash "$INSTALLER" --lang pt --dry-run --tool zcode --squad treino </dev/null >/dev/null 2>&1; rc=$?
+if [[ $rc -eq 0 && ! -e "$TH/.agency-agents/config" ]]; then
+  PASS=$((PASS+1)); echo "PASS dry-run: config de idioma não escrito"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("dry-lang"); echo "FAIL dry-run persistiu o idioma — bug B13"
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 36. FIX B4 (RED esperado): project_only sem --dir → aviso explícito ----------
+TH=/tmp/aa-h-ponote; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang pt --tool cursor --squad treino </dev/null >/tmp/aa-out-ponote 2>&1; rc=$?
+n=$(find "$TH/.cursor/rules" -name "*.mdc" 2>/dev/null | wc -l)
+if [[ $rc -eq 0 && "$n" == "4" ]] && grep -qi "por projeto\|per-project\|por proyecto\|par projet\|pro projekt" /tmp/aa-out-ponote; then
+  PASS=$((PASS+1)); echo "PASS cursor sem --dir: instala em HOME mas avisa que é por projeto"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("project-only-note"); echo "FAIL cursor sem --dir silencioso (n=$n) — bug B4"
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 37. FIX B1 (RED esperado): symlink escapando do catálogo → aviso i18n, não EN ----------
+TH=/tmp/aa-h-symlink; new_home "$TH"
+ln -s /etc/passwd "$TH/.agency-agents/engineering/aa-evil.md" 2>/dev/null
+cat > "$TH/p-sym.json" <<'EOF'
+{"ferramentas":["claudeCode"],"agentes":[{"slug":"aa-evil","file":"engineering/aa-evil.md"},{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"}]}
+EOF
+HOME="$TH" bash "$INSTALLER" --lang pt --plan "$TH/p-sym.json" </dev/null >/tmp/aa-out-sym 2>&1; rc=$?
+# identity copia o NOME OFICIAL do arquivo (engineering-code-reviewer.md), não o slug
+if [[ $rc -eq 0 ]] && grep -qi "caminho inseguro\|inseguro ignorado" /tmp/aa-out-sym \
+   && [[ ! -f "$TH/.claude/agents/aa-evil.md" ]] && [[ -f "$TH/.claude/agents/engineering-code-reviewer.md" ]]; then
+  PASS=$((PASS+1)); echo "PASS symlink escape → aviso i18n (pt), skip, instala o resto"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("symlink-escape"); echo "FAIL symlink (rc=$rc) — aviso EN hard-coded (bug B1) ou escape"; head -5 /tmp/aa-out-sym | sed 's/^/    /'
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 38. FIX B16 (condicional): sem opener no PATH → não anuncia "Opening" ----------
+if ! command -v xdg-open >/dev/null 2>&1 && ! command -v open >/dev/null 2>&1 && ! command -v osascript >/dev/null 2>&1; then
+  TH=/tmp/aa-h-noopen; new_home "$TH"
+  HOME="$TH" bash "$INSTALLER" --lang en --status </dev/null >/tmp/aa-out-noopen 2>&1
+  grep -qi "Opening the guide" /tmp/aa-out-noopen \
+    && { FAIL=$((FAIL+1)); FAILED_NAMES+=("opening-noopener"); echo "FAIL anunciou Opening sem opener — bug B16"; } \
+    || { PASS=$((PASS+1)); echo "PASS sem opener: não anuncia Opening"; }
+  rm -rf "$TH"; clean_repo_side_effects
+else
+  echo "SKIP 38 (opener presente neste host — branch testado só em CI sem desktop)"
+fi
+
+# ---------- 39. backup idempotente: reinstalar sem modificar NÃO cria backup novo ----------
+TH=/tmp/aa-h-bkp0; new_home "$TH"
+cat > "$TH/p.json" <<'EOF'
+{"ferramentas":["zcode"],"agentes":[{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"}]}
+EOF
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/p.json" </dev/null >/dev/null 2>&1
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/p.json" </dev/null >/dev/null 2>&1
+n_bkp=$(find "$TH/.agency-agents-backup" -type f 2>/dev/null | wc -l)
+[[ "$n_bkp" == "0" ]] && { PASS=$((PASS+1)); echo "PASS reinstalação idêntica → 0 backups (skip por conteúdo igual)"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("backup-identical"); echo "FAIL reinstalação idêntica criou $n_bkp backup(s)"; }
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 40. REJECTED: --uninstall sem --tool/sem plano e sem TTY ----------
+TH=/tmp/aa-h-unnoty; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --uninstall </dev/null >/dev/null 2>&1; rc=$?
+[[ $rc -ne 0 ]] && { PASS=$((PASS+1)); echo "PASS --uninstall sem seleção e sem TTY → err, rc!=0"; } \
+  || { FAIL=$((FAIL+1)); FAILED_NAMES+=("uninstall-notty"); echo "FAIL --uninstall sem seleção seguiu (rc=0)"; }
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 41. guia ausente ao lado do instalador → aviso honesto, rc=0 ----------
+ROG="/tmp/aa-noguia-$$"; TH=/tmp/aa-h-noguia
+rm -rf "$ROG" "$TH"; mkdir -p "$ROG/instaladores"
+cp "$INSTALLER" "$DRIVER" "$ROG/instaladores/"   # SEM guia no diretório pai
+new_home "$TH"
+( cd "$ROG" && HOME="$TH" bash instaladores/instalar-linux.sh --lang en --status </dev/null ) >/tmp/aa-out-noguia 2>&1; rc=$?
+if [[ $rc -eq 0 ]] && grep -qi "not found next to the installer\|não encontrado junto" /tmp/aa-out-noguia; then
+  PASS=$((PASS+1)); echo "PASS sem guia: aviso guia_not_found, rc=0"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("no-guide"); echo "FAIL sem guia (rc=$rc)"; head -5 /tmp/aa-out-noguia | sed 's/^/    /'
+fi
+rm -rf "$ROG" "$TH"; clean_repo_side_effects
+
 # ---------- limpeza ----------
 rm -rf "$TESTCAT" /tmp/aa-out-* /tmp/aa-badplan.json /tmp/aa-trav.json /tmp/aa-h-* /tmp/aa-list-err /tmp/aa-json-err 2>/dev/null || true
 clean_repo_side_effects

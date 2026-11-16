@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.1-blue)](CHANGELOG.md)
 
 **Um guia em HTML + instaladores que trazem 283 especialistas de IA para as suas ferramentas de código** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity e outras).
 
@@ -84,6 +84,15 @@ O instalador procura o plano automaticamente em `.`, `..`, na pasta do instalado
 | `--uninstall` | `-Uninstall` | Remove os especialistas da agência (backup antes; preserva seus arquivos) |
 | `--dir <caminho>` | `-Dir <caminho>` | Instala numa pasta de **projeto** — habilita Cursor/Aider/Windsurf |
 | `--lang en\|pt\|es\|fr\|de` | `-Lang en\|pt\|es\|fr\|de` | Idioma (persistido para as próximas execuções) |
+
+### Windows — se um método te der problema
+
+1. **Duplo clique** em `instaladores\instalar-windows.cmd` — roda o instalador com `-ExecutionPolicy Bypass` (sem mexer na policy da máquina) e segura a janela no fim para você ler o resultado.
+2. **"A execução de scripts está desabilitada"** (arquivo veio de ZIP): rode `Unblock-File .\instaladores\instalar-windows.ps1` uma vez e execute normalmente depois.
+3. **Comando manual** (o que o .cmd faz): `powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1`
+4. **Scripts/CI com argumentos**: a linha única `irm … | iex` não aceita argumentos — salve em arquivo e execute:
+   `irm https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main/instaladores/instalar.ps1 -OutFile $env:TEMP\aa.ps1; & $env:TEMP\aa.ps1 -Lang pt -Tool zcode -Squad pre`
+5. Sem o **Git for Windows**? `winget install Git.Git`. Para pinar versão em máquinas controladas: `$env:AA_BRANCH = "v2.3.1"` antes da linha única (no bash, use `AA_BRANCH=v2.3.1` antes do curl).
 
 Exemplos:
 ```bash

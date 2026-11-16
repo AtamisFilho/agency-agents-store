@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.1-blue)](CHANGELOG.md)
 
 **An HTML guide + installers that bring 283 AI specialists into your coding tools** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity and more).
 
@@ -84,6 +84,15 @@ The installer searches `.`, `..`, the installer folder, `~/Downloads` and `~/Doc
 | `--uninstall` | `-Uninstall` | Remove the agency specialists (backs up first; keeps your own files) |
 | `--dir <path>` | `-Dir <path>` | Install into a **project** folder — enables Cursor/Aider/Windsurf |
 | `--lang en\|pt\|es\|fr\|de` | `-Lang en\|pt\|es\|fr\|de` | Language (persisted for next runs) |
+
+### Windows — if one method gives you trouble
+
+1. **Double-click** `instaladores\instalar-windows.cmd` — runs the installer with `-ExecutionPolicy Bypass` (without touching your machine's policy) and keeps the window open so you can read the result.
+2. **"Running scripts is disabled"** (file came from a ZIP): run `Unblock-File .\instaladores\instalar-windows.ps1` once, then run it normally.
+3. **Manual command** (what the .cmd does): `powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1`
+4. **Scripts/CI with arguments**: the `irm … | iex` one-liner can't take arguments — save to a file and run it instead:
+   `irm https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main/instaladores/instalar.ps1 -OutFile $env:TEMP\aa.ps1; & $env:TEMP\aa.ps1 -Lang en -Tool zcode -Squad pre`
+5. Missing **Git for Windows**? `winget install Git.Git`. To pin a version on controlled machines: `$env:AA_BRANCH = "v2.3.1"` before the one-liner (the bash `-s --` one supports it too).
 
 Examples:
 ```bash

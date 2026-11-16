@@ -315,6 +315,18 @@ def catalog_keys(cat: Path) -> set[str]:
     return keys
 
 
+SLUG_MAP = {}  # slug oficial → stem do arquivo (para "faltando" honesto e uninstall por plano)
+
+
+def _slug_map(cat: Path) -> dict[str, str]:
+    out = {}
+    for p in catalog_agents(cat):
+        n = _frontmatter_name(p)
+        if n:
+            out[_slugify(n)] = p.stem
+    return out
+
+
 def run_git(*args, cwd=None) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
 
@@ -325,7 +337,7 @@ def ensure_catalog(allow_network: bool) -> bool:
         if allow_network:
             say(msg("cat_update", str(CATALOG_DIR)))
             if run_git("-C", str(CATALOG_DIR), "pull", "--ff-only").returncode != 0:
-                warn("catalog update skipped")
+                warn(msg("catalog_update_skipped"))
         return True
     if (CATALOG_DIR / "divisions.json").is_file():
         return True  # clone sem .git (ex.: fixture de teste) — usa como está
@@ -392,6 +404,8 @@ def agency_count(tool, base: Path, stems: set[str] | None) -> int:
     d = base / tool["rel"]
     if not d.exists():
         return 0
+    if tool.get("kind") == "roster":
+        return 1 if d.is_file() else 0  # roster = 1 arquivo-índice (B2)
     if d.is_file():
         return 1 if d.stem in stems else 0
     n = 0
@@ -544,16 +558,16 @@ BASE_DIR = HOME  # --dir muda a base (instalar por projeto)
 def render(tool, out_dir: Path) -> Path | None:
     """Roda o conversor oficial; devolve <out>/<kebab>/ (ou None com aviso honesto)."""
     if not shutil.which("bash"):
-        die("bash required (to run the official converter).")
+        die(msg("bash_required"))
     script = CATALOG_DIR / "scripts" / "convert.sh"
     if not script.is_file():
-        warn(f"render {tool['kebab']}: converter missing in catalog")
+        warn(msg("render_missing", tool["kebab"], "scripts/convert.sh"))
         return None
     r = subprocess.run(["bash", str(script), "--tool", tool["kebab"], "--out", str(out_dir)],
                        cwd=str(CATALOG_DIR), capture_output=True, text=True)
     base = out_dir / tool["kebab"]
     if r.returncode != 0 or not base.is_dir():
-        warn(f"render {tool['kebab']}: failed")
+        warn(msg("render_failed", tool["kebab"]))
         return None
     return base
 
@@ -576,7 +590,7 @@ def install_identity(tool, plan_agentes: list[dict] | None, stems: set[str]):
         for ag in plan_agentes:
             src = (cat / ag["file"]).resolve()
             if cat not in src.parents and src.parent != cat:
-                warn(f"unsafe path ignored: {ag['file']}")
+                warn(msg("unsafe_path", ag["file"]))
                 continue
             if src.exists() and src.suffix == ".md":
                 backup_file(dest / src.name, BASE_DIR, ref=src, sub=tool["id"])
@@ -592,7 +606,7 @@ def install_rendered(tool, work: Path):
         return
     src_root = base / tool["sub"]
     if not src_root.is_dir():
-        warn(f"render {tool['kebab']}: {tool['sub']} missing")
+        warn(msg("render_missing", tool["kebab"], tool["sub"]))
         return
     dest.mkdir(parents=True, exist_ok=True)
     if tool["mode"] == "arquivo":
@@ -621,7 +635,7 @@ def install_roster(tool, work: Path):
         return
     src = base / tool["roster_file"]
     if not src.is_file():
-        warn(f"render {tool['kebab']}: roster file missing")
+        warn(msg("render_missing", tool["kebab"], tool["roster_file"]))
         return
     if SLUGS is not None:
         warn(msg("roster_note", tool["label"]))
@@ -636,6 +650,8 @@ def install_one(tool, work: Path, stems: set[str]):
         return
     label = tool["label"]
     dest = BASE_DIR / tool["rel"]
+    if tool.get("project_only") and BASE_DIR == HOME:
+        warn(msg("project_only_note", label))  # B4: instala em HOME, mas deixa claro
     if DRY_RUN:
         n = len(SLUGS) if SLUGS is not None else len(catalog_agents(CATALOG_DIR))
         say(msg("dry_run_action", label, n, str(dest)))
@@ -661,7 +677,10 @@ def install_one(tool, work: Path, stems: set[str]):
     requested = len(SLUGS) if SLUGS is not None else len(catalog_agents(CATALOG_DIR))
     if present < requested:
         have = {p.stem for p in (dest.rglob("*") if dest.is_dir() else []) if p.is_file()}
-        missing = sorted((SLUGS if SLUGS is not None else stems) - have)[:5]
+        # match honesto: um slug pedido está "presente" se o destino tem o arquivo
+        # com o slug OU com o stem oficial correspondente (identity copia <stem>.md)
+        have_expanded = have | {s for s, st in SLUG_MAP.items() if st in have}
+        missing = sorted((SLUGS if SLUGS is not None else stems) - have_expanded)[:5]
         warn(msg("install_partial", present, requested, label, ", ".join(missing)))
     say(msg("install_ok", label, present))
 
@@ -810,7 +829,8 @@ def resolve_lang(cli_lang: str, can_prompt: bool):
             die(f"Invalid language: {cli_lang} (use en, pt, es, fr or de) / "
                 f"Idioma inválido: {cli_lang} (use en, pt, es, fr ou de)")
         LANG_SEL = cli_lang
-        save_lang(cli_lang)
+        if not DRY_RUN:  # B13: dry-run não escreve nada — nem o config de idioma
+            save_lang(cli_lang)
         return
     saved = read_saved_lang()
     if saved:
@@ -826,7 +846,8 @@ def resolve_lang(cli_lang: str, can_prompt: bool):
     try:
         ln = ask(f"1-5 [{default}]: ") or default
         LANG_SEL = {"1": "en", "2": "pt", "3": "es", "4": "fr", "5": "de"}.get(ln, default)
-        save_lang(LANG_SEL)
+        if not DRY_RUN:  # B13
+            save_lang(LANG_SEL)
     except NoTTY:
         LANG_SEL = default
 
@@ -956,6 +977,8 @@ def main():
     # ---- catálogo (status/json nunca usam rede) ----
     have_catalog = ensure_catalog(allow_network=not (status_only or as_json))
     stems = catalog_keys(CATALOG_DIR) if have_catalog else set()
+    global SLUG_MAP
+    SLUG_MAP = _slug_map(CATALOG_DIR) if have_catalog else {}
 
     # ---- seleção de ferramentas/squad ----
     tools_to_do: list[dict] = []
@@ -972,16 +995,25 @@ def main():
             print(f"  {n:2d}) {t['id']:<14} {st}")
             opts.append(t)
             n += 1
-        resp = ask(msg("pick_tools") + " ")
-        ids = []
-        if not resp.replace(" ", ""):
-            ids = [t["id"] for t in opts]
-        else:
-            for tok in resp.replace(",", " ").split():
+
+        def parse(resp: str) -> list[str] | None:
+            """ids escolhidos; None = resposta inválida não-vazia (reprompt, B18)."""
+            ids: list[str] = []
+            toks = resp.replace(",", " ").split()
+            if not toks:
+                return []
+            for tok in toks:
                 if tok.isdigit() and 1 <= int(tok) <= len(opts):
                     ids.append(opts[int(tok) - 1]["id"])
-            ids = ids or [t["id"] for t in opts]
-        return [TOOL_BY_ID[i] for i in ids]
+            return ids or None
+
+        for _ in range(3):
+            resp = ask(msg("pick_tools") + " ")
+            got = parse(resp)
+            if got is not None:
+                return [TOOL_BY_ID[i] for i in (got or [t["id"] for t in opts])]
+            print("  ?!")  # entrada inválida: pede de novo (nunca "instala tudo" por engano)
+        return [TOOL_BY_ID[t["id"]] for t in opts]  # 3 tentativas inválidas → todas (padrão do Enter)
 
     def pick_squad_interactive() -> list[str] | None:
         print()
@@ -1007,15 +1039,20 @@ def main():
     elif tool_arg:
         ids = [x.strip() for x in tool_arg.split(",") if x.strip()]
         tools_to_do = []
+        known_unsupported = False
         for tid in ids:
             t = TOOL_BY_ID.get(tid)
             if t:
                 tools_to_do.append(t)
             elif tid in ("vibe", "dsh", "openclaw", "hermes"):
                 warn(msg("unsupported", tid))
+                known_unsupported = True
             else:
                 warn(msg("tool_unknown", tid))
         if not tools_to_do:
+            if known_unsupported:
+                # pedido reconhecido e avisado (existe no catálogo, não integrado) — nada a fazer, rc=0
+                return
             die(msg("tool_unknown", ids[-1] if ids else "?"))
         if do_uninstall or status_only:
             pass  # squad é irrelevante aqui
@@ -1031,7 +1068,12 @@ def main():
             die(msg("err_notty"))
         tools_to_do = pick_tools_interactive()
         if not do_uninstall:
-            SLUGS = pick_squad_interactive()
+            # --squad sem --tool: usa a squad pedida em vez de perguntar de novo
+            if squad_arg:
+                slugs = squad_slugs(squad_arg)
+                SLUGS = set(slugs) if slugs is not None else None
+            else:
+                SLUGS = pick_squad_interactive()
 
     # ---- executar ----
     if DRY_RUN:
@@ -1044,8 +1086,13 @@ def main():
         if do_uninstall:
             if not stems:
                 die(msg("cat_status_missing", str(CATALOG_DIR)))
+            # B3: com plano, remove SÓ o que o plano pede (slugs + stems equivalentes);
+            # sem plano, remove a agência inteira da ferramenta
+            keys = set(stems)
+            if SLUGS is not None:
+                keys = set(SLUGS) | {SLUG_MAP[s] for s in SLUGS if s in SLUG_MAP}
             for t in tools_to_do:
-                uninstall_one(t, stems)
+                uninstall_one(t, keys)
         elif not status_only and not as_json and tools_to_do:
             for t in tools_to_do:
                 install_one(t, work, stems)
@@ -1069,8 +1116,9 @@ def main():
     for t in TOOLS:
         c = count_agents_rel(t["rel"])
         print(f"  {t['label']:<16} {msg('detected') if tool_installed(t) else msg('absent'):<12} {c} {msg('specialists')}")
-    # abre o guia apenas em uso interativo — nunca em CI/scripts (não spawnar browser)
-    if not status_only and not DRY_RUN and interactive_ok():
+    # abre o guia apenas em uso interativo E com algum opener disponível — nunca em CI/scripts
+    openers = any(shutil.which(c) for c in ("xdg-open", "open", "osascript"))
+    if not status_only and not DRY_RUN and interactive_ok() and openers:
         say(msg("opening"))
         open_guide()
     print()

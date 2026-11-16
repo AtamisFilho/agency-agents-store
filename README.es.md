@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.1-blue)](CHANGELOG.md)
 
 **Una guía HTML + instaladores que traen 283 especialistas de IA a tus herramientas de programación** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity y más).
 
@@ -84,6 +84,15 @@ El instalador busca el plan automáticamente en `.`, `..`, la carpeta del instal
 | `--uninstall` | `-Uninstall` | Elimina los especialistas de la agencia (backup antes; conserva tus archivos) |
 | `--dir <ruta>` | `-Dir <ruta>` | Instala en una carpeta de **proyecto** — habilita Cursor/Aider/Windsurf |
 | `--lang en\|pt\|es\|fr\|de` | `-Lang en\|pt\|es\|fr\|de` | Idioma (se recuerda para las próximas ejecuciones) |
+
+### Windows — si un método te da problema
+
+1. **Doble clic** en `instaladores\instalar-windows.cmd` — ejecuta el instalador con `-ExecutionPolicy Bypass` (sin tocar la política de la máquina) y mantiene la ventana abierta al final.
+2. **"La ejecución de scripts está deshabilitada"** (el archivo vino de un ZIP): ejecuta `Unblock-File .\instaladores\instalar-windows.ps1` una vez y ejecútalo normal después.
+3. **Comando manual** (lo que hace el .cmd): `powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1`
+4. **Scripts/CI con argumentos**: la línea única `irm … | iex` no acepta argumentos — guárdalo en archivo y ejecútalo:
+   `irm https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main/instaladores/instalar.ps1 -OutFile $env:TEMP\aa.ps1; & $env:TEMP\aa.ps1 -Lang es -Tool zcode -Squad pre`
+5. ¿Sin **Git for Windows**? `winget install Git.Git`. Para fijar versión en máquinas controladas: `$env:AA_BRANCH = "v2.3.1"` antes de la línea única.
 
 Ejemplos:
 ```bash

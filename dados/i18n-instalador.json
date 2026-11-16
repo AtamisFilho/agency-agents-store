@@ -1,7 +1,13 @@
 {
   "_meta": {
     "what": "Fonte única das mensagens dos instaladores (agency-install.py e instalar-windows.ps1). Placeholders: {0}, {1}, {2} — compatíveis com Python .format() e PowerShell -f.",
-    "langs": ["en", "pt", "es", "fr", "de"],
+    "langs": [
+      "en",
+      "pt",
+      "es",
+      "fr",
+      "de"
+    ],
     "note": "Se uma chave faltar num idioma, o instalador usa o inglês como fallback (nunca imprime a chave crua)."
   },
   "en": {
@@ -54,7 +60,14 @@
     "uninstall_none": "No agency specialist found in {0} — nothing to remove.",
     "uninstall_skip": "{0}: roster file not removed automatically — delete {1} by hand if you want.",
     "plan_autodetected": "Plan found automatically: {0}",
-    "dir_note": "Installing into project directory: {0}"
+    "dir_note": "Installing into project directory: {0}",
+    "catalog_update_skipped": "catalog update skipped",
+    "bash_required": "bash required (to run the official converter).",
+    "render_missing": "render {0}: {1} missing",
+    "render_failed": "render {0}: converter failed",
+    "unsafe_path": "unsafe path ignored: {0}",
+    "cygpath_failed": "cygpath failed — reinstall Git for Windows",
+    "project_only_note": "{0} is a per-project tool — use --dir <project>; installing into the home folder anyway."
   },
   "pt": {
     "pick_lang": "Escolha o seu idioma:",
@@ -106,7 +119,14 @@
     "uninstall_none": "Nenhum especialista da agência encontrado em {0} — nada a remover.",
     "uninstall_skip": "{0}: arquivo-índice não é removido automaticamente — apague {1} à mão se quiser.",
     "plan_autodetected": "Plano encontrado automaticamente: {0}",
-    "dir_note": "Instalando no diretório do projeto: {0}"
+    "dir_note": "Instalando no diretório do projeto: {0}",
+    "catalog_update_skipped": "atualização do catálogo ignorada",
+    "bash_required": "bash é necessário (para rodar o conversor oficial).",
+    "render_missing": "render {0}: {1} ausente",
+    "render_failed": "render {0}: o conversor falhou",
+    "unsafe_path": "caminho inseguro ignorado: {0}",
+    "cygpath_failed": "cygpath falhou — reinstale o Git for Windows",
+    "project_only_note": "{0} é uma ferramenta por projeto — use --dir <projeto>; instalando na pasta home mesmo assim."
   },
   "es": {
     "pick_lang": "Elige tu idioma:",
@@ -158,7 +178,14 @@
     "uninstall_none": "Ningún especialista de la agencia en {0} — nada que eliminar.",
     "uninstall_skip": "{0}: el archivo-índice no se elimina automáticamente — borra {1} a mano si quieres.",
     "plan_autodetected": "Plan encontrado automáticamente: {0}",
-    "dir_note": "Instalando en el directorio del proyecto: {0}"
+    "dir_note": "Instalando en el directorio del proyecto: {0}",
+    "catalog_update_skipped": "actualización del catálogo omitida",
+    "bash_required": "se necesita bash (para ejecutar el convertidor oficial).",
+    "render_missing": "render {0}: falta {1}",
+    "render_failed": "render {0}: el convertidor falló",
+    "unsafe_path": "ruta insegura ignorada: {0}",
+    "cygpath_failed": "cygpath falló — reinstala Git for Windows",
+    "project_only_note": "{0} es una herramienta por proyecto — usa --dir <proyecto>; instalando en la carpeta home de todos modos."
   },
   "fr": {
     "pick_lang": "Choisissez votre langue :",
@@ -210,7 +237,14 @@
     "uninstall_none": "Aucun spécialiste de l'agence dans {0} — rien à retirer.",
     "uninstall_skip": "{0} : le fichier-index n'est pas retiré automatiquement — supprimez {1} à la main si besoin.",
     "plan_autodetected": "Plan trouvé automatiquement : {0}",
-    "dir_note": "Installation dans le répertoire du projet : {0}"
+    "dir_note": "Installation dans le répertoire du projet : {0}",
+    "catalog_update_skipped": "mise à jour du catalogue ignorée",
+    "bash_required": "bash est requis (pour exécuter le convertisseur officiel).",
+    "render_missing": "render {0} : {1} manquant",
+    "render_failed": "render {0} : échec du convertisseur",
+    "unsafe_path": "chemin dangereux ignoré : {0}",
+    "cygpath_failed": "échec de cygpath — réinstallez Git for Windows",
+    "project_only_note": "{0} est un outil par projet — utilisez --dir <projet> ; installation dans le dossier home quand même."
   },
   "de": {
     "pick_lang": "Wählen Sie Ihre Sprache:",
@@ -262,6 +296,13 @@
     "uninstall_none": "Kein Agentur-Spezialist in {0} gefunden — nichts zu entfernen.",
     "uninstall_skip": "{0}: Index-Datei wird nicht automatisch entfernt — lösche {1} bei Bedarf von Hand.",
     "plan_autodetected": "Plan automatisch gefunden: {0}",
-    "dir_note": "Installation ins Projektverzeichnis: {0}"
+    "dir_note": "Installation ins Projektverzeichnis: {0}",
+    "catalog_update_skipped": "Katalog-Update übersprungen",
+    "bash_required": "bash wird benötigt (für den offiziellen Konverter).",
+    "render_missing": "render {0}: {1} fehlt",
+    "render_failed": "render {0}: Konverter fehlgeschlagen",
+    "unsafe_path": "unsicherer Pfad ignoriert: {0}",
+    "cygpath_failed": "cygpath fehlgeschlagen — Git for Windows neu installieren",
+    "project_only_note": "{0} ist ein Projekt-Tool — benutze --dir <projekt>; Installation trotzdem in den Home-Ordner."
   }
 }

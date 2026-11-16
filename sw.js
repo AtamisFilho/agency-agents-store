@@ -1,6 +1,6 @@
 /* sw.js — service worker do guia. GERADO por gerador/build.py (a versão entra no nome do
    cache: release novo → sw.js muda → browser reinstala → cache antigo é apagado). */
-const VER = "v2.3.0";
+const VER = "v2.3.1";
 const CACHE = "agencia-guia-" + VER;
 const ASSETS = [
   "./",

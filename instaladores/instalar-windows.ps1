@@ -118,17 +118,20 @@ if (-not $Lang -and -not $Json -and -not $List -and [Environment]::UserInteracti
 }
 if (-not $Lang) { $Lang = "en" }
 # -Json/-List têm contrato "writes nothing": idioma NÃO é persistido nesses modos (igual ao driver Python)
-if (-not ($Json -or $List) -and $Lang -ne (Read-SavedLang)) { Save-Lang $Lang }
+if (-not ($Json -or $List -or $DryRun) -and $Lang -ne (Read-SavedLang)) { Save-Lang $Lang }   # B13: dry-run não escreve
 $M = $I18N.$Lang
 function Msg($key) { $s = $M.$key; if (-not $s) { $s = $I18N.en.$key }; return $s }
 function MsgF($key, $vals) { $s = Msg $key; if ($vals) { return ($s -f $vals) }; return $s }
 
 # ---------- pré-requisitos ----------
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Die (Msg "need_git") }
-$GitDir = Split-Path -Parent (Get-Command git).Source
-$GitRoot = Split-Path -Parent $GitDir
-$Bash = Join-Path $GitRoot "bin\bash.exe"
-if (-not (Test-Path $Bash)) { Die "bash.exe not found inside Git ($Bash). Reinstall Git for Windows with default options." }
+# ---------- pré-requisitos (B8: -List/-Status -Json rodam sem git — checks só onde são usados) ----------
+if (-not ($Json -or $List)) {
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) { Die (Msg "need_git") }
+  $GitDir = Split-Path -Parent (Get-Command git).Source
+  $GitRoot = Split-Path -Parent $GitDir
+  $Bash = Join-Path $GitRoot "bin\bash.exe"
+  if (-not (Test-Path $Bash)) { Die "bash.exe not found inside Git ($Bash). Reinstall Git for Windows with default options." }
+}
 
 # ---------- helpers ----------
 $BaseDir = $env:USERPROFILE
@@ -168,6 +171,7 @@ function Get-CatalogAgents {
   }
   return $out
 }
+$script:SlugToStem = @{}   # slug oficial → stem do arquivo (missing honesto + uninstall por plano)
 function Get-CatalogStems {
   # chaves de match: stems dos arquivos (identity) E slugs oficiais (renderizados
   # nomeiam por slug: code-reviewer.md, <slug>/SKILL.md…) — igual ao driver Python
@@ -175,7 +179,11 @@ function Get-CatalogStems {
   foreach ($f in (Get-CatalogAgents)) {
     $keys[$f.BaseName] = $true
     $n = Get-FrontmatterName $f
-    if ($n) { $keys[(Get-Slugify $n)] = $true }
+    if ($n) {
+      $slug = Get-Slugify $n
+      $keys[$slug] = $true
+      $script:SlugToStem[$slug] = $f.BaseName
+    }
   }
   return @($keys.Keys)
 }
@@ -300,6 +308,7 @@ function Get-AgencyCount($t, $base, $stems) {
   if (-not $stems -or $stems.Count -eq 0) { return 0 }
   $d = Join-Path $base ($t.dest -replace "/", "\")
   if (-not (Test-Path $d)) { return 0 }
+  if ($t.kind -eq "roster") { return 1 }   # roster = 1 arquivo-índice (B2)
   if (Test-Path $d -PathType Leaf) { if ($stems -contains ([IO.Path]::GetFileNameWithoutExtension($d))) { return 1 } else { return 0 } }
   $n = 0
   foreach ($f in (Get-ChildItem $d -Recurse -File -ErrorAction SilentlyContinue)) {
@@ -404,10 +413,10 @@ function Install-Rendered($t) {
   try {
     $catalogMsys = To-Msys $Catalog
     $outMsys = To-Msys $outWin
-    if (-not $catalogMsys -or -not $outMsys) { Warn "cygpath failed (Git for Windows install broken?)"; return }
+    if (-not $catalogMsys -or -not $outMsys) { Warn (Msg "cygpath_failed"); return }
     $r = Invoke-Native { & $Bash -c 'cd "$1" && bash scripts/convert.sh --tool "$2" --out "$3"' "convert" "$catalogMsys" "$($t.kebab)" "$outMsys" }
     $src = To-Win "$outMsys/$($t.kebab)/$($t.sub)"
-    if ($r.Code -ne 0 -or -not $src -or -not (Test-Path $src)) { Warn "render $($t.kebab): $($t.sub) missing"; return }
+    if ($r.Code -ne 0 -or -not $src -or -not (Test-Path $src)) { Warn (MsgF "render_missing" @($t.kebab, $t.sub)); return }
     if ($t.mode -eq "arquivo") {
       New-Item -ItemType Directory -Force -Path $dest | Out-Null
       Get-ChildItem $src -Recurse -File | ForEach-Object {
@@ -437,10 +446,10 @@ function Install-Roster($t) {
   try {
     $catalogMsys = To-Msys $Catalog
     $outMsys = To-Msys $outWin
-    if (-not $catalogMsys -or -not $outMsys) { Warn "cygpath failed (Git for Windows install broken?)"; return }
+    if (-not $catalogMsys -or -not $outMsys) { Warn (Msg "cygpath_failed"); return }
     $r = Invoke-Native { & $Bash -c 'cd "$1" && bash scripts/convert.sh --tool "$2" --out "$3"' "convert" "$catalogMsys" "$($t.kebab)" "$outMsys" }
     $src = To-Win "$outMsys/$($t.kebab)/$($t.rosterFile)"
-    if ($r.Code -ne 0 -or -not $src -or -not (Test-Path $src -PathType Leaf)) { Warn "render $($t.kebab): roster file missing"; return }
+    if ($r.Code -ne 0 -or -not $src -or -not (Test-Path $src -PathType Leaf)) { Warn (MsgF "render_missing" @($t.kebab, $t.rosterFile)); return }
     if ($script:Slugs) { Warn (MsgF "roster_note" @($t.label)) }
     New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
     Backup-IfChanged $dest $src $t.id
@@ -453,6 +462,9 @@ function Install-Roster($t) {
 function Install-One($t) {
   if ($t.compat -eq "nao") { Warn (MsgF "unsupported_os" @($t.label, "Windows")); return }
   $dest = Join-Path $BaseDir ($t.dest -replace "/", "\")
+  if ($t.projectOnly -and $BaseDir -eq $env:USERPROFILE) {
+    Warn (MsgF "project_only_note" @($t.label))   # B4: instala em HOME, mas deixa claro
+  }
   if ($DryRun) {
     $n = if ($script:Slugs) { $script:Slugs.Count } else { (Get-CatalogAgents).Count }
     Say (MsgF "dry_run_action" @($t.label, $n, $dest))
@@ -475,13 +487,17 @@ function Install-One($t) {
     $have = @{}
     if (Test-Path $dest) { Get-ChildItem $dest -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $have[$_.BaseName] = $true } }
     $wanted = if ($script:Slugs) { $script:Slugs } else { $Stems }
-    $missing = @($wanted | Where-Object { -not $have.ContainsKey($_) } | Select-Object -First 5)
+    # match honesto: o slug está presente se o destino tem o arquivo com o slug
+    # OU com o stem oficial correspondente (identity copia <stem>.md)
+    $missing = @($wanted | Where-Object {
+      -not $have.ContainsKey($_) -and -not ($script:SlugToStem.ContainsKey($_) -and $have.ContainsKey($script:SlugToStem[$_]))
+    } | Select-Object -First 5)
     Warn (MsgF "install_partial" @($present, $requested, $t.label, ($missing -join ", ")))
   }
   Say (MsgF "install_ok" @($t.label, $present))
 }
 
-function Uninstall-One($t) {
+function Uninstall-One($t, $keys) {
   if ($t.compat -eq "nao") { Warn (MsgF "unsupported_os" @($t.label, "Windows")); return }
   $dest = Join-Path $BaseDir ($t.dest -replace "/", "\")
   if ($DryRun) {
@@ -500,14 +516,14 @@ function Uninstall-One($t) {
   New-Item -ItemType Directory -Force -Path $bdir | Out-Null
   $moved = 0
   foreach ($f in (Get-ChildItem $dest -Recurse -File -ErrorAction SilentlyContinue)) {
-    if (@(".md",".toml",".mdc") -contains $f.Extension -and $Stems -contains $f.BaseName) {
+    if (@(".md",".toml",".mdc") -contains $f.Extension -and $keys -contains $f.BaseName) {
       New-Item -ItemType Directory -Force -Path (Join-Path $bdir $f.Directory.Name) | Out-Null
       Move-Item $f.FullName (Join-Path $bdir (Join-Path $f.Directory.Name $f.Name)) -Force
       $moved++
     }
   }
   foreach ($d in (Get-ChildItem $dest -Directory -ErrorAction SilentlyContinue)) {
-    if ($Stems -contains $d.Name) { Move-Item $d.FullName (Join-Path $bdir $d.Name) -Force; $moved++ }
+    if ($keys -contains $d.Name) { Move-Item $d.FullName (Join-Path $bdir $d.Name) -Force; $moved++ }
   }
   if ($moved -gt 0) { Say (MsgF "uninstall_ok" @($moved, $t.label, (Join-Path $BackupDir "uninstall-$Ts"))) }
   else { Warn (MsgF "uninstall_none" @($t.label)) }
@@ -527,15 +543,19 @@ if ($plano) {
     else { Warn (MsgF "tool_unknown" @("$tid".Trim())) }
   }
 } elseif ($Tool) {
+  $knownUnsup = $false
   foreach ($tid in ($Tool -split ",")) {
     $tid = $tid.Trim()
     if (-not $tid) { continue }
     $t = $TOOLS | Where-Object { $_.id -eq $tid }
     if ($t) { $doTools += $t }
-    elseif ($tid -in @("vibe","dsh","openclaw","hermes")) { Warn (MsgF "unsupported" @($tid)) }
+    elseif ($tid -in @("vibe","dsh","openclaw","hermes")) { Warn (MsgF "unsupported" @($tid)); $knownUnsup = $true }
     else { Warn (MsgF "tool_unknown" @($tid)) }
   }
-  if (-not $doTools) { Die (MsgF "tool_unknown" @($Tool)) }
+  if (-not $doTools) {
+    if ($knownUnsup) { exit 0 }   # pedido reconhecido e avisado — nada integrado a fazer, rc=0
+    Die (MsgF "tool_unknown" @($Tool))
+  }
   if (-not ($Uninstall -or $Status)) {
     if ($Squad) {
       $slugs = Get-SquadSlugs $Squad
@@ -565,20 +585,35 @@ if ($plano) {
     Write-Host ("  {0,2}) {1,-14} {2}{3}" -f $i, $t.id, $st, $wsl)
     $opts += $t; $i++
   }
-  $resp = Read-Host (Msg "pick_tools")
-  if (-not $resp.Trim()) { $doTools = $opts }
-  else {
+  $resp = ""
+  $attempts = 0
+  :pick while ($true) {
+    $resp = Read-Host (Msg "pick_tools")
+    if (-not $resp.Trim()) { $doTools = $opts; break }   # Enter = todas
+    $attempts++
+    $any = $false
     foreach ($n in $resp.Split(",")) {
-      $idx = 0; if ([int]::TryParse($n.Trim(), [ref]$idx)) { if ($idx -ge 1 -and $idx -le $opts.Count) { $doTools += $opts[$idx-1] } }
+      $idx = 0
+      if ([int]::TryParse($n.Trim(), [ref]$idx)) {
+        if ($idx -ge 1 -and $idx -le $opts.Count) { $doTools += $opts[$idx-1]; $any = $true }
+      }
     }
-    if (-not $doTools) { $doTools = $opts }
+    if ($any) { break }
+    $doTools = @()   # B18: input inválido não-vazio NUNCA vira "instala tudo" — repete (até 3x)
+    if ($attempts -ge 3) { $doTools = $opts; break }
   }
   if (-not $Uninstall) {
-    $s = Read-Host ("{0}  {1}  {2}  {3}  [1]" -f (Msg "pick_squad"), (Msg "squad1"), (Msg "squad2"), (Msg "squad3"))
-    if (-not $s) { $s = "1" }
-    $key = if ($s -eq "2") { "treino" } elseif ($s -eq "3") { "all" } else { "pre" }
-    $slugs = Get-SquadSlugs $key
-    $script:Slugs = if ($slugs) { ,$slugs } else { $null }
+    # -Squad sem -Tool: usa a squad pedida em vez de perguntar de novo (igual ao driver)
+    if ($Squad) {
+      $slugs = Get-SquadSlugs $Squad
+      $script:Slugs = if ($slugs) { ,$slugs } else { $null }
+    } else {
+      $s = Read-Host ("{0}  {1}  {2}  {3}  [1]" -f (Msg "pick_squad"), (Msg "squad1"), (Msg "squad2"), (Msg "squad3"))
+      if (-not $s) { $s = "1" }
+      $key = if ($s -eq "2") { "treino" } elseif ($s -eq "3") { "all" } else { "pre" }
+      $slugs = Get-SquadSlugs $key
+      $script:Slugs = if ($slugs) { ,$slugs } else { $null }
+    }
   }
 }
 
@@ -587,7 +622,15 @@ if ($DryRun) { Say (Msg "dry_run_banner") }
 
 if ($Uninstall) {
   if (-not $HaveCatalog) { Die (MsgF "cat_status_missing" @($Catalog)) }
-  foreach ($t in $doTools) { Uninstall-One $t }
+  # B3: com plano/squad, remove SÓ o que foi pedido (slugs + stems equivalentes);
+  # sem seleção de slugs, remove a agência inteira da ferramenta
+  $uKeys = $Stems
+  if ($script:Slugs) {
+    $set = @{}; foreach ($s in $script:Slugs) { $set[$s] = $true }
+    foreach ($k in $script:SlugToStem.Keys) { if ($set.ContainsKey($k)) { $set[$script:SlugToStem[$k]] = $true } }
+    $uKeys = @($set.Keys)
+  }
+  foreach ($t in $doTools) { Uninstall-One $t $uKeys }
 } elseif (-not ($Status -or $Json) -and $doTools.Count -gt 0) {
   foreach ($t in $doTools) { Install-One $t }
 }
@@ -617,7 +660,8 @@ if (-not $DryRun) {
     } catch {
       Warn (Msg "status_fail")   # instalação já feita: não aborta por causa do painel
     }
-    if (-not $Status) { Say (Msg "opening"); Start-Process (Join-Path $guDir $GuideName) }
+    # I10: não abre o guia em Status/Uninstall/DryRun nem em sessão não-interativa
+    if (-not ($Status -or $Uninstall) -and [Environment]::UserInteractive) { Say (Msg "opening"); Start-Process (Join-Path $guDir $GuideName) }
   } else {
     Warn (Msg "guia_not_found")
   }

@@ -131,3 +131,28 @@ jobs:
           if (-not (Test-Path "$env:USERPROFILE\.zcode\agents\code-reviewer.md")) { Write-Error "agent not installed"; exit 1 }
           if (-not (Test-Path "$env:USERPROFILE\.agency-agents\config")) { Write-Error "lang config missing after fresh install"; exit 1 }
           Write-Host "Windows install OK"
+
+      - name: Smoke — rejected branches (PS 5.1 executa de verdade)
+        shell: powershell
+        run: |
+          $o1 = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -Tool foo -Squad pre 2>&1
+          if ($LASTEXITCODE -eq 0) { Write-Error "-Tool foo should be rejected"; exit 1 }
+          if (-not ("$o1" -match "Unknown tool")) { Write-Error "missing tool_unknown message"; exit 1 }
+          $o2 = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -Tool zcode -Squad nope 2>&1
+          if ($LASTEXITCODE -eq 0) { Write-Error "-Squad nope should be rejected"; exit 1 }
+          if (-not ("$o2" -match "Invalid squad")) { Write-Error "missing err_squad message"; exit 1 }
+          $o3 = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -Tool zcode -Squad pre -Dir "C:\__definitely_missing_dir__" 2>&1
+          if ($LASTEXITCODE -eq 0) { Write-Error "-Dir missing should be rejected"; exit 1 }
+          Write-Host "PS1 rejected branches OK"
+
+      - name: Smoke — DryRun previews and writes nothing (PS 5.1)
+        shell: powershell
+        run: |
+          $o = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -DryRun -Tool zcode -Squad pre 2>&1
+          if ($LASTEXITCODE -ne 0) { Write-Error "dry-run failed"; exit 1 }
+          if (Test-Path "$env:USERPROFILE\.zcode") { Write-Error "dry-run wrote .zcode"; exit 1 }
+          Write-Host "PS1 dry-run OK"
+
+      - name: Smoke — .cmd launcher (double-click path, args skip pause)
+        shell: cmd
+        run: instaladores\instalar-windows.cmd -List

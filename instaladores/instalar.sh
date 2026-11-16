@@ -11,7 +11,9 @@
 set -euo pipefail
 
 STORE="$HOME/.agency-agents-store"
-BASE="https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main"
+# AA_BRANCH=vX.Y.Z pinos a versão (ambientes controlados); default = main
+BRANCH="${AA_BRANCH:-main}"
+BASE="https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/$BRANCH"
 
 say()  { printf '\033[0;32m[ok]\033[0m  %s\n' "$*"; }
 warn() { printf '\033[0;33m[!!]\033[0m  %s\n' "$*"; }

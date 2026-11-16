@@ -5,6 +5,49 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions are tagged `vX.Y.Z` and **must equal** `version` in `dados/meta.json`
 (that is also the version the guide's update badge compares against).
 
+## [2.3.1] — 2026-11-16
+
+Correções vindas de revisão adversarial + bateria exaustiva de testes de branches
+rejected (test-first: 15 blocos novos na suíte; os REDs esperados revelaram os bugs).
+
+### Fixed
+- **`--tool vibe` (conhecida do catálogo, não integrada) morria com rc=1 e dupla
+  mensagem contraditória** ("Unknown tool" + "not supported") — agora avisa e sai
+  rc=0, como o mesmo caso dentro de planos. Achado pelos testes, não pela revisão.
+- **Lista de "faltando" do aviso `install_partial` era falsa para ferramentas
+  identity**: o instalador copia `<stem>.md` oficial (ex. `engineering-code-reviewer.md`)
+  mas a verificação comparava contra o *slug* → reportava instalado como faltando.
+  Agora o match usa o mapa slug→stem do catálogo (driver e PS1).
+- Revisão anterior (BAIXOs agora corrigidos): roster conta **1** no painel quando o
+  arquivo existe (B2); **`--uninstall --plan` remove só os slugs do plano** em vez da
+  ferramenta inteira (B3); **`--dry-run` não persiste mais o idioma** (B13); ferramenta
+  **per-project sem `--dir`** avisa explicitamente (B4); avisos de sistema migrados da
+  língua inglesa hard-coded para `dados/i18n-instalador.json` (B1); **"Opening the
+  guide" só aparece com um opener disponível** (B16); **seletor de ferramentas
+  interativo re-pergunta** em entrada inválida em vez de instalar TUDO (B18); PS1
+  não abre mais o guia em `-Uninstall`/não-interativo (I10); PS1 roda `-List`/
+  `-Status -Json` **sem exigir Git** (B8); `--squad` sem `--tool` no modo interativo
+  usa a squad pedida em vez de perguntar de novo.
+- Suíte: +15 blocos (27–41) cobrindo branches rejected inéditos (squad/tool/dir
+  inválidos, planos malformados além dos clássicos — raiz-lista, ferramentas-string,
+  agentes-dict, `C:\…`, slug com backslash, slug vazio —, config com BOM e corrompida,
+  catálogo sem `.git`, symlink escapando do catálogo, backup idempotente, uninstall
+  sem seleção, guia ausente). CI Windows ganhou smokes que **executam os branches
+  rejected do PS1 de verdade** (`-Tool foo`, `-Squad nope`, `-Dir` inexistente,
+  `-DryRun` sem escrita) e o launcher `.cmd`.
+
+### Added
+- **Alternativa Windows: `instaladores/instalar-windows.cmd`** — duplo clique roda o
+  instalador com `-ExecutionPolicy Bypass` (sem alterar a policy da máquina) e segura
+  a janela no fim; com argumentos, roda direto (serve para scripts/CI). O bootstrap
+  `instalar.ps1` também baixa o `.cmd` e desbloqueia **Mark-of-the-Web**
+  (`Unblock-File`) nos arquivos baixados.
+- **Versionamento pinável nos one-liners** (CI/ambientes controlados): `AA_BRANCH=vX.Y.Z`
+  antes do one-liner (bash e PowerShell) ou `-Branch vX.Y.Z`.
+- READMEs (5 idiomas): seção "Windows — se um método te der problema" com as 5
+  alternativas (duplo clique .cmd, Unblock-File, comando manual, one-liner com
+  argumentos via arquivo, winget/pin de versão).
+
 ## [2.3.0] — 2026-11-16
 
 ### Added

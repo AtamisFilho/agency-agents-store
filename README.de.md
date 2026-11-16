@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.1-blue)](CHANGELOG.md)
 
 **Ein HTML-Leitfaden + Installer, die 283 KI-Spezialisten in deine Coding-Tools bringen** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity und mehr).
 
@@ -84,6 +84,15 @@ Der Installer sucht den Plan automatisch in `.`, `..`, im Installer-Ordner, in `
 | `--uninstall` | `-Uninstall` | Entfernt die Agentur-Spezialisten (Backup vorher; behält deine Dateien) |
 | `--dir <pfad>` | `-Dir <pfad>` | Installiert in einen **Projekt**-Ordner — aktiviert Cursor/Aider/Windsurf |
 | `--lang en\|pt\|es\|fr\|de` | `-Lang en\|pt\|es\|fr\|de` | Sprache (wird für künftige Läufe gemerkt) |
+
+### Windows — falls eine Methode Probleme macht
+
+1. **Doppelklick** auf `instaladores\instalar-windows.cmd` — führt den Installer mit `-ExecutionPolicy Bypass` aus (ohne die Policy der Maschine zu ändern) und hält das Fenster am Ende offen.
+2. **„Ausführung von Skripts deaktiviert"** (Datei kam aus einem ZIP): einmal `Unblock-File .\instaladores\instalar-windows.ps1` ausführen, dann normal starten.
+3. **Manueller Befehl** (was das .cmd tut): `powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1`
+4. **Skripte/CI mit Argumenten**: der Einzeiler `irm … | iex` nimmt keine Argumente — in eine Datei speichern und ausführen:
+   `irm https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main/instaladores/instalar.ps1 -OutFile $env:TEMP\aa.ps1; & $env:TEMP\aa.ps1 -Lang de -Tool zcode -Squad pre`
+5. **Git for Windows** fehlt? `winget install Git.Git`. Version auf kontrollierten Maschinen pinnen: `$env:AA_BRANCH = "v2.3.1"` vor dem Einzeiler.
 
 Beispiele:
 ```bash
