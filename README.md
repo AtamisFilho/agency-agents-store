@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.1-blue)](CHANGELOG.md)
 
 **An HTML guide + installers that bring 283 AI specialists into your coding tools** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity and more).
 
@@ -65,7 +65,7 @@ In the guide, the button **"➕ Install specialists into a tool"** asks *where* 
 
 ```bash
 ./instaladores/instalar-linux.sh --plan          # path is optional: it finds agency-plan.json
-.\instalar-windows.ps1 -Plan                     # same on Windows (-Plan with no value)
+.\instalar-windows.ps1 -PlanAuto                 # same on Windows (finds the plan automatically)
 ```
 
 The installer searches `.`, `..`, the installer folder, `~/Downloads` and `~/Documents` for the plan automatically (the legacy name `plano-agencia.json` works too).
@@ -76,7 +76,7 @@ The installer searches `.`, `..`, the installer folder, `~/Downloads` and `~/Doc
 |---|---|---|
 | `--tool zcode,codex` | `-Tool zcode,codex` | Pick tools non-interactively (ids from `--list`) |
 | `--squad pre\|treino\|all` | `-Squad pre\|treino\|all` | Pick the squad non-interactively (CI/scripts) |
-| `--plan [FILE]` | `-Plan [FILE]` | Use the guide's plan (auto-searched when FILE is omitted) |
+| `--plan [FILE]` | `-Plan FILE` / `-PlanAuto` | Use the guide's plan (auto-search: `--plan` with no value, or `-PlanAuto`) |
 | `--dry-run` | `-DryRun` | Preview everything that would be touched — writes nothing |
 | `--list` | `-List` | Catalog/tools/squads as JSON on stdout (never touches the network) |
 | `--status` | `-Status` | Detect only + refresh the guide panel (no network) |

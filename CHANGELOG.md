@@ -5,6 +5,51 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions are tagged `vX.Y.Z` and **must equal** `version` in `dados/meta.json`
 (that is also the version the guide's update badge compares against).
 
+## [2.2.1] — 2026-11-16
+
+Correções da revisão de código pós-lançamento da 2.2.0 (veredito: "precisa de correção" — 4 achados altos, 2 confirmados empiricamente).
+
+### Fixed
+- **`--dry-run --uninstall` removia arquivos de verdade** (driver e PS1) — violava o contrato
+  "não escreve nada" da flag. Agora o uninstall em dry-run apenas pré-visualiza quantos
+  seriam removidos (`[dry-run] …: would remove N`). Novo teste na suíte.
+- **Driver quebrava na importação em Python 3.8/3.9** (PEP 604 `X | None` em assinaturas
+  sem `from __future__ import annotations`) — público Debian 11/Mint antigo. Corrigido;
+  CI agora roda smoke em Python 3.8 e 3.9.
+- **Windows PowerShell 5.1: `$ErrorActionPreference=Stop` + stderr de comando nativo
+  redirecionado (`2>$null`) derrubava o instalador** no primeiro `git clone`/`git pull`
+  (eles sempre escrevem em stderr). Todo comando nativo agora passa por `Invoke-Native`
+  (EAP Continue + `$LASTEXITCODE`); de quebra, falha do `git pull` deixou de ser silenciosa.
+- **`-Plan` sem valor era impossível no PowerShell** (erro de binding "Missing an argument")
+  embora documentado nos 5 READMEs — criado o switch `-PlanAuto` e a documentação corrigida.
+- **PS1: `-Status -Json`/`-List` gravavam o config de idioma** — quebrava o contrato
+  "writes nothing" (o driver Python já respeitava).
+- **Driver: `say()` poluía o stdout em `--json`** (dir_note/plan_autodetected impressos antes
+  do JSON) — agora vai para stderr, como os avisos. PS1: `Say`/`Warn` idem em `-Json`/`-List`.
+- **PS1: menu de idioma crashava com input não numérico** (`[int]"abc"` com EAP Stop) e
+  aceitava "0"/"6" silenciosamente — agora `TryParse` + range 1-5 + fallback para o padrão.
+- **PS1: squads.json corrompido instalava TUDO em silêncio** (null → "todas") — agora morre
+  com `err_no_data`, igual ao driver.
+- **PS1 salvo sem BOM** — `powershell -File` (5.1) lê como ANSI e mostrava mojibake nos
+  literais acentuados; agora UTF-8 com BOM (pwsh 7 aceita os dois).
+- **Config de idioma**: PS1 agora grava UTF-8 sem BOM e o driver lê com `utf-8-sig`
+  (tolera BOM deixado por versões antigas do PowerShell).
+- Locale não-UTF-8 (ssh antigo) não derruba mais o driver (`stdout.reconfigure(errors="replace")`).
+- Parsing de flags uniforme: `--lang/--tool/--squad/--dir` não engolem mais o token
+  seguinte quando ele começa com `--`.
+- `build.py` lê JSONs com `encoding="utf-8"` explícito (máquina de contribuidor em cp1252).
+- PS1: diretório temporário do convert é limpo em `finally` mesmo com early-return;
+  bootstraps e instalador com caminhos de temp não vazam mais.
+
+### Added
+- **CI Windows**: job `windows-latest` EXECUTA o instalador de verdade no PowerShell 5.1
+  (`-List`, `-Status -Json`, instalação real com `-Plan`) — antes o PS1 só passava pelo
+  parser, e era exatamente onde os bugs viviam.
+- **CI Python antigo**: matrix 3.8/3.9 (ubuntu-22.04) com smoke de importação + `--status
+  --json` + `--list`.
+- Testes novos: `--dry-run --uninstall` (não remove nada), roster Aider via `--dir`
+  (+ uninstall honesto do roster), idioma salvo respeitado na 2ª execução.
+
 ## [2.2.0] — 2026-11-16
 
 ### Fixed

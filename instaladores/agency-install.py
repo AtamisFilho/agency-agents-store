@@ -19,6 +19,8 @@ Modo:
   --dir PASTA     instala dentro de um projeto (Cursor/Aider/Windsurf e cia.)
   --lang en|pt|es|fr|de     idioma (persistido em ~/.agency-agents/config)
 """
+from __future__ import annotations  # PEP 604 (`X | None`) em anotações: compatível com Python 3.8+
+
 import json
 import os
 import re
@@ -104,6 +106,7 @@ _FALLBACK_EN = {
     "tool_unknown": "Unknown tool: {0} — skipped (use --list to see the valid ids).",
     "dry_run_banner": "DRY-RUN: nothing will be written — preview only.",
     "dry_run_action": "[dry-run] {0}: would install {1} specialist(s) into {2}",
+    "dry_run_remove": "[dry-run] {0}: would remove {1} specialist(s)",
     "dry_run_panel": "[dry-run] guide panel not written.",
     "uninstall_ok": "{0} specialist(s) removed from {1} — backup saved in {2}",
     "uninstall_none": "No agency specialist found in {0} — nothing to remove.",
@@ -138,9 +141,17 @@ def msg(key, *args):
 _USE_COLOR = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
 _JSON_MODE = False  # --list/--json: stdout é dado estruturado, avisos vão p/ stderr
 
+# console em locale não-UTF-8 (ex.: ssh antigo) não pode derrubar o instalador no "✓"
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, OSError):
+        pass
+
 
 def say(text):
-    print(("\033[0;32m[ok]\033[0m  " if _USE_COLOR else "[ok]  ") + text)
+    print(("\033[0;32m[ok]\033[0m  " if _USE_COLOR else "[ok]  ") + text,
+          file=sys.stderr if _JSON_MODE else sys.stdout)
 
 
 def warn(text):
@@ -512,20 +523,21 @@ DRY_RUN = False
 BASE_DIR = HOME  # --dir muda a base (instalar por projeto)
 
 
-def render(tool, out_dir: Path) -> bool:
+def render(tool, out_dir: Path) -> Path | None:
+    """Roda o conversor oficial; devolve <out>/<kebab>/ (ou None com aviso honesto)."""
     if not shutil.which("bash"):
         die("bash required (to run the official converter).")
     script = CATALOG_DIR / "scripts" / "convert.sh"
     if not script.is_file():
         warn(f"render {tool['kebab']}: converter missing in catalog")
-        return False
+        return None
     r = subprocess.run(["bash", str(script), "--tool", tool["kebab"], "--out", str(out_dir)],
                        cwd=str(CATALOG_DIR), capture_output=True, text=True)
-    src_root = out_dir / tool["kebab"] / tool["sub"]
-    if r.returncode != 0 or not src_root.is_dir():
-        warn(f"render {tool['kebab']}: {tool['sub']} missing")
-        return False
-    return True
+    base = out_dir / tool["kebab"]
+    if r.returncode != 0 or not base.is_dir():
+        warn(f"render {tool['kebab']}: failed")
+        return None
+    return base
 
 
 def wanted(stem: str) -> bool:
@@ -557,9 +569,13 @@ def install_rendered(tool, work: Path):
     dest = BASE_DIR / tool["rel"]
     if DRY_RUN:
         return
-    if not render(tool, work / "out"):
+    base = render(tool, work / "out")
+    if base is None:
         return
-    src_root = work / "out" / tool["kebab"] / tool["sub"]
+    src_root = base / tool["sub"]
+    if not src_root.is_dir():
+        warn(f"render {tool['kebab']}: {tool['sub']} missing")
+        return
     dest.mkdir(parents=True, exist_ok=True)
     if tool["mode"] == "arquivo":
         for f in sorted(src_root.rglob("*")):
@@ -582,9 +598,10 @@ def install_roster(tool, work: Path):
     dest = BASE_DIR / tool["rel"]
     if DRY_RUN:
         return
-    if not render(tool, work / "out"):
+    base = render(tool, work / "out")
+    if base is None:
         return
-    src = work / "out" / tool["kebab"] / tool["roster_file"]
+    src = base / tool["roster_file"]
     if not src.is_file():
         warn(f"render {tool['kebab']}: roster file missing")
         return
@@ -636,6 +653,11 @@ def uninstall_one(tool, stems: set[str]):
         warn(msg("unsupported_os", tool["label"], OSL))
         return
     dest = BASE_DIR / tool["rel"]
+    if DRY_RUN:
+        # dry-run também vale para remoção: NADA é movido, só pré-visualizado
+        n = agency_count(tool, BASE_DIR, stems)
+        say(msg("dry_run_remove", tool["label"], n))
+        return
     if tool["kind"] == "roster":
         if dest.is_file():
             warn(msg("uninstall_skip", tool["label"], str(dest)))
@@ -736,7 +758,8 @@ def open_guide():
 
 def read_saved_lang() -> str | None:
     try:
-        for line in CONFIG_FILE.read_text(encoding="utf-8").splitlines():
+        # utf-8-sig: tolera BOM que o PowerShell 5.1 deixa ao gravar o config
+        for line in CONFIG_FILE.read_text(encoding="utf-8-sig").splitlines():
             if line.startswith("lang="):
                 v = line[5:].strip()
                 return v if v in LANGS else None
@@ -837,7 +860,7 @@ def main():
                 plan_arg = nxt
                 i += 1
         elif a in ("--lang", "--lingua"):
-            if nxt:
+            if nxt and not nxt.startswith("--"):
                 cli_lang = nxt
                 i += 1
         elif a == "--status":
@@ -851,15 +874,15 @@ def main():
         elif a == "--dry-run":
             DRY_RUN = True
         elif a == "--tool":
-            if nxt:
+            if nxt and not nxt.startswith("--"):
                 tool_arg = nxt
                 i += 1
         elif a == "--squad":
-            if nxt:
+            if nxt and not nxt.startswith("--"):
                 squad_arg = nxt
                 i += 1
         elif a == "--dir":
-            if nxt:
+            if nxt and not nxt.startswith("--"):
                 dir_arg = nxt
                 i += 1
         elif a in ("--help", "-h", "--ajuda"):

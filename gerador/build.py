@@ -11,13 +11,13 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DADOS = REPO / "dados"
-meta = json.load(open(DADOS / "meta.json"))
+meta = json.load(open(DADOS / "meta.json", encoding="utf-8"))
 GUIA_VERSION = meta["version"]
 OUR_REPO = meta["ourRepo"]
 
-agents = json.load(open(DADOS / "agents.json"))
-squads_data = json.load(open(DADOS / "squads.json"))
-i18n = json.load(open(DADOS / "i18n.json"))  # {en,pt,es,fr,de} -> {agents:{slug:{d,x[4]}}, when:{div,custom}}
+agents = json.load(open(DADOS / "agents.json", encoding="utf-8"))
+squads_data = json.load(open(DADOS / "squads.json", encoding="utf-8"))
+i18n = json.load(open(DADOS / "i18n.json", encoding="utf-8"))  # {en,pt,es,fr,de} -> {agents:{slug:{d,x[4]}}, when:{div,custom}}
 when_pt = i18n["pt"]["when"]
 
 INSTALLED_CLAUDE = set(meta["tags"]["claudeFiles"])

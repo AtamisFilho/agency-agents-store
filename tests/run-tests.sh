@@ -339,13 +339,21 @@ else
 fi
 rm -rf "$ROG" "$TH"
 
-# ---------- 22. idioma persistido em ~/.agency-agents/config + locale ignorado com config ----------
+# ---------- 22. idioma persistido em ~/.agency-agents/config + respeitado na 2ª execução ----------
 TH=/tmp/aa-h-langsave; rm -rf "$TH"; mkdir -p "$TH"
 HOME="$TH" bash "$INSTALLER" --lang pt --status </dev/null >/dev/null 2>&1
 if grep -q "^lang=pt$" "$TH/.agency-agents/config" 2>/dev/null; then
   PASS=$((PASS+1)); echo "PASS --lang pt persistido em ~/.agency-agents/config"
 else
   FAIL=$((FAIL+1)); FAILED_NAMES+=("lang-persist"); echo "FAIL config de idioma não salvo"; fi
+# 2ª execução SEM --lang usa o idioma salvo (não cai no locale nem pergunta)
+if HOME="$TH" bash "$INSTALLER" --status --json </dev/null 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert d["lang"] == "pt", "esperado lang=pt"' 2>/dev/null; then
+  PASS=$((PASS+1)); echo "PASS idioma salvo é respeitado na 2ª execução (--status --json lang=pt)"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("lang-reuse"); echo "FAIL 2ª execução não usou o idioma salvo"; fi
 rm -rf "$TH"; clean_repo_side_effects
 
 # ---------- 23. --status --json: JSON puro no stdout, nenhum arquivo escrito ----------
@@ -366,6 +374,40 @@ else
   FAIL=$((FAIL+1)); FAILED_NAMES+=("status-json"); echo "FAIL --status --json"; head -3 /tmp/aa-out-json 2>/dev/null; cat /tmp/aa-json-err 2>/dev/null | head -2
 fi
 rm -rf "$ROG" "$TH"
+
+# ---------- 24. --dry-run --uninstall NÃO remove nada (contrato do dry-run) ----------
+TH=/tmp/aa-h-dryunin; new_home "$TH"
+cat > "$TH/plan2.json" <<'EOF'
+{"ferramentas":["zcode"],"agentes":[{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"},{"slug":"reality-checker","file":"testing/testing-reality-checker.md"}]}
+EOF
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan2.json" </dev/null >/dev/null 2>&1
+HOME="$TH" bash "$INSTALLER" --lang en --dry-run --uninstall --tool zcode </dev/null >/tmp/aa-out-dryunin 2>&1
+rc=$?
+if [[ $rc -eq 0 ]] && grep -qi "would remove\|removeria" /tmp/aa-out-dryunin \
+   && [[ -f "$TH/.zcode/agents/code-reviewer.md" ]] && [[ -f "$TH/.zcode/agents/reality-checker.md" ]] \
+   && ! find "$TH/.agency-agents-backup" -type d -name "uninstall-*" 2>/dev/null | grep -q .; then
+  PASS=$((PASS+1)); echo "PASS --dry-run --uninstall: pré-visualiza e NÃO remove nada"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("dry-run-uninstall"); echo "FAIL --dry-run --uninstall removeu arquivos (rc=$rc)"; head -5 /tmp/aa-out-dryunin | sed 's/^/    /'
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 25. roster (Aider) via --dir + uninstall honesto do roster ----------
+TH=/tmp/aa-h-roster; new_home "$TH"; mkdir -p "$TH/proj"
+HOME="$TH" bash "$INSTALLER" --lang en --tool aider --dir "$TH/proj" --squad treino </dev/null >/tmp/aa-out-roster 2>&1
+rc=$?
+if [[ $rc -eq 0 && -f "$TH/proj/CONVENTIONS.md" ]] && grep -q "Roster updated: Aider" /tmp/aa-out-roster; then
+  PASS=$((PASS+1)); echo "PASS roster Aider em --dir: CONVENTIONS.md gerado"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("roster-aider"); echo "FAIL roster aider (rc=$rc)"; head -5 /tmp/aa-out-roster | sed 's/^/    /'
+fi
+HOME="$TH" bash "$INSTALLER" --lang en --uninstall --tool aider --dir "$TH/proj" </dev/null >/tmp/aa-out-roster-un 2>&1
+if [[ -f "$TH/proj/CONVENTIONS.md" ]] && grep -qi "not removed automatically\|não é removido automaticamente" /tmp/aa-out-roster-un; then
+  PASS=$((PASS+1)); echo "PASS uninstall de roster: avisa e preserva o arquivo"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("roster-uninstall"); echo "FAIL uninstall de roster deveria avisar e preservar"; head -5 /tmp/aa-out-roster-un
+fi
+rm -rf "$TH"; clean_repo_side_effects
 
 # ---------- limpeza ----------
 rm -rf "$TESTCAT" /tmp/aa-out-* /tmp/aa-badplan.json /tmp/aa-trav.json /tmp/aa-h-* /tmp/aa-list-err /tmp/aa-json-err 2>/dev/null || true

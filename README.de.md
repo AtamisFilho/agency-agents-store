@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.1-blue)](CHANGELOG.md)
 
 **Ein HTML-Leitfaden + Installer, die 283 KI-Spezialisten in deine Coding-Tools bringen** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity und mehr).
 
@@ -65,7 +65,7 @@ Im Guide fragt die Schaltfläche **„➕ Spezialisten in einem Tool installiere
 
 ```bash
 ./instaladores/instalar-linux.sh --plan          # Pfad ist optional: er findet agency-plan.json
-.\instalar-windows.ps1 -Plan                     # unter Windows genauso (-Plan ohne Wert)
+.\instalar-windows.ps1 -PlanAuto                 # unter Windows genauso (findet den Plan automatisch)
 ```
 
 Der Installer sucht den Plan automatisch in `.`, `..`, im Installer-Ordner, in `~/Downloads` und `~/Documents` (der alte Name `plano-agencia.json` funktioniert auch).
@@ -76,7 +76,7 @@ Der Installer sucht den Plan automatisch in `.`, `..`, im Installer-Ordner, in `
 |---|---|---|
 | `--tool zcode,codex` | `-Tool zcode,codex` | Tools ohne Rückfrage wählen (gültige ids: `--list`) |
 | `--squad pre\|treino\|all` | `-Squad pre\|treino\|all` | Team ohne Rückfrage wählen (CI/Skripte) |
-| `--plan [DATEI]` | `-Plan [DATEI]` | Plan des Guides verwenden (Auto-Suche, wenn Pfad weggelassen) |
+| `--plan [DATEI]` | `-Plan DATEI` / `-PlanAuto` | Plan des Guides verwenden (Auto-Suche: `--plan` ohne Pfad, oder `-PlanAuto`) |
 | `--dry-run` | `-DryRun` | Zeigt alles, was angefasst würde — schreibt nichts |
 | `--list` | `-List` | Katalog/Tools/Teams als JSON auf stdout (niemals Netz) |
 | `--status` | `-Status` | Nur erkennen + Guide-Panel aktualisieren (ohne Netz) |

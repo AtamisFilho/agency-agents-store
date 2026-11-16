@@ -46,3 +46,64 @@ jobs:
 
       - name: Installer suite (adversarial — uses network to clone the catalog)
         run: bash tests/run-tests.sh
+
+  old-python:
+    # o driver declara suporte a Python 3.8+ (`from __future__ import annotations`);
+    # este job garante que uma PEP 604 acidental volte a quebrar versões antigas
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: py_compile + smoke (import, --status --json, --list)
+        env:
+          HOME: /tmp/smoke-home
+        run: |
+          python3 -m py_compile instaladores/agency-install.py gerador/build.py
+          mkdir -p /tmp/smoke-home
+          bash instaladores/instalar-linux.sh --lang en --status --json </dev/null | python3 -c '
+            import json, sys
+            d = json.load(sys.stdin)
+            assert d["lang"] == "en" and len(d["tools"]) >= 13'
+          bash instaladores/instalar-linux.sh --list </dev/null | python3 -c '
+            import json, sys
+            d = json.load(sys.stdin)
+            assert d["catalog"] is None and len(d["tools"]) >= 13'
+
+  windows:
+    # o PS1 nunca era EXECUTADO em lugar nenhum (só Parser) — é onde os bugs do
+    # PS 5.1 vivem. Smoke real no powershell.exe 5.1 do runner.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax (PowerShell parser)
+        shell: pwsh
+        run: |
+          foreach ($f in @("instaladores/instalar-windows.ps1", "instaladores/instalar.ps1")) {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs)
+            if ($errs.Count) { $errs | ForEach-Object { Write-Error $_.Message }; exit 1 }
+            Write-Host "OK $f"
+          }
+      - name: Smoke — List e Status -Json (Windows PowerShell 5.1, escreve nada)
+        shell: powershell
+        run: |
+          $out = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -Status -Json
+          $d = $out | ConvertFrom-Json
+          if (-not $d.tools -or $d.tools.Count -lt 13) { Write-Error "tools insuficientes"; exit 1 }
+          if (Test-Path "$PWD\guia-status.js") { Write-Error "escreveu guia-status.js em modo -Json"; exit 1 }
+          $out2 = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -List
+          $l = $out2 | ConvertFrom-Json
+          if (-not $l.tools -or $l.tools.Count -lt 13) { Write-Error "-List tools insuficientes"; exit 1 }
+      - name: Smoke — instalação real com -Plan (catálogo de verdade)
+        shell: powershell
+        run: |
+          $plan = "$env:RUNNER_TEMP\smoke-plan.json"
+          Set-Content $plan -Encoding UTF8 -Value '{"ferramentas":["zcode"],"agentes":[{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"},{"slug":"reality-checker","file":"testing/testing-reality-checker.md"}]}'
+          powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -Lang en -Plan $plan
+          if (-not (Test-Path "$env:USERPROFILE\.zcode\agents\code-reviewer.md")) { Write-Error "agente não instalado"; exit 1 }
+          Write-Host "instalação Windows OK"

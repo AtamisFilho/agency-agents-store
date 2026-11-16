@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.1-blue)](CHANGELOG.md)
 
 **Una guía HTML + instaladores que traen 283 especialistas de IA a tus herramientas de programación** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity y más).
 
@@ -65,7 +65,7 @@ En la guía, el botón **"➕ Instalar especialistas en una herramienta"** pregu
 
 ```bash
 ./instaladores/instalar-linux.sh --plan          # la ruta es opcional: encuentra el agency-plan.json
-.\instalar-windows.ps1 -Plan                     # igual en Windows (-Plan sin valor)
+.\instalar-windows.ps1 -PlanAuto                 # igual en Windows (encuentra el plan automáticamente)
 ```
 
 El instalador busca el plan automáticamente en `.`, `..`, la carpeta del instalador, `~/Downloads` y `~/Documents` (el nombre antiguo `plano-agencia.json` también funciona).
@@ -76,7 +76,7 @@ El instalador busca el plan automáticamente en `.`, `..`, la carpeta del instal
 |---|---|---|
 | `--tool zcode,codex` | `-Tool zcode,codex` | Elige herramientas sin preguntar (ids válidos: `--list`) |
 | `--squad pre\|treino\|all` | `-Squad pre\|treino\|all` | Elige el escuadrón sin preguntar (CI/scripts) |
-| `--plan [ARCHIVO]` | `-Plan [ARCHIVO]` | Usa el plan de la guía (búsqueda automática si omites la ruta) |
+| `--plan [ARCHIVO]` | `-Plan ARCHIVO` / `-PlanAuto` | Usa el plan de la guía (búsqueda automática: `--plan` sin ruta, o `-PlanAuto`) |
 | `--dry-run` | `-DryRun` | Previsualiza todo lo que se tocaría — no escribe nada |
 | `--list` | `-List` | Catálogo/herramientas/escuadrones en JSON por stdout (nunca usa red) |
 | `--status` | `-Status` | Solo detecta + actualiza el panel de la guía (sin red) |

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.1-blue)](CHANGELOG.md)
 
 **Un guide HTML + des installateurs qui amènent 283 spécialistes de l'IA dans vos outils de programmation** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity et plus encore).
 
@@ -65,7 +65,7 @@ Dans le guide, le bouton **« ➕ Installer des spécialistes dans un outil »**
 
 ```bash
 ./instaladores/instalar-linux.sh --plan          # le chemin est facultatif : il trouve agency-plan.json
-.\instalar-windows.ps1 -Plan                     # pareil sous Windows (-Plan sans valeur)
+.\instalar-windows.ps1 -PlanAuto                 # pareil sous Windows (trouve le plan automatiquement)
 ```
 
 L'installateur cherche le plan automatiquement dans `.`, `..`, le dossier de l'installateur, `~/Downloads` et `~/Documents` (l'ancien nom `plano-agencia.json` fonctionne aussi).
@@ -76,7 +76,7 @@ L'installateur cherche le plan automatiquement dans `.`, `..`, le dossier de l'i
 |---|---|---|
 | `--tool zcode,codex` | `-Tool zcode,codex` | Choix des outils sans question (ids valides : `--list`) |
 | `--squad pre\|treino\|all` | `-Squad pre\|treino\|all` | Choix de l'escouade sans question (CI/scripts) |
-| `--plan [FICHIER]` | `-Plan [FICHIER]` | Utilise le plan du guide (recherche auto si le chemin est omis) |
+| `--plan [FICHIER]` | `-Plan FICHIER` / `-PlanAuto` | Utilise le plan du guide (recherche auto : `--plan` sans chemin, ou `-PlanAuto`) |
 | `--dry-run` | `-DryRun` | Prévisualise tout ce qui serait touché — n'écrit rien |
 | `--list` | `-List` | Catalogue/outils/escouades en JSON sur stdout (jamais de réseau) |
 | `--status` | `-Status` | Détection seule + Rafraîchit le panneau du guide (sans réseau) |

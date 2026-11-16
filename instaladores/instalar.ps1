@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # instalar.ps1 — Agency Agents Store, instalador de UMA LINHA (Windows)
 #
 #   irm https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main/instaladores/instalar.ps1 | iex

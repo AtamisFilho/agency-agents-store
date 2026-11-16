@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.0-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.1-blue)](CHANGELOG.md)
 
 **Um guia em HTML + instaladores que trazem 283 especialistas de IA para as suas ferramentas de código** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity e outras).
 
@@ -65,7 +65,7 @@ No guia, o botão **"➕ Instalar especialistas numa ferramenta"** pergunta *ond
 
 ```bash
 ./instaladores/instalar-linux.sh --plan          # caminho é opcional: ele acha o agency-plan.json
-.\instalar-windows.ps1 -Plan                     # igual no Windows (-Plan sem valor)
+.\instalar-windows.ps1 -PlanAuto                 # igual no Windows (acha o plano automaticamente)
 ```
 
 O instalador procura o plano automaticamente em `.`, `..`, na pasta do instalador, em `~/Downloads` e `~/Documents` (o nome antigo `plano-agencia.json` também funciona).
@@ -76,7 +76,7 @@ O instalador procura o plano automaticamente em `.`, `..`, na pasta do instalado
 |---|---|---|
 | `--tool zcode,codex` | `-Tool zcode,codex` | Escolhe ferramentas sem perguntar (ids válidos: `--list`) |
 | `--squad pre\|treino\|all` | `-Squad pre\|treino\|all` | Escolhe a squad sem perguntar (CI/scripts) |
-| `--plan [ARQUIVO]` | `-Plan [ARQUIVO]` | Usa o plano do guia (busca automática se omitir o caminho) |
+| `--plan [ARQUIVO]` | `-Plan ARQUIVO` / `-PlanAuto` | Usa o plano do guia (busca automática: `--plan` sem caminho, ou `-PlanAuto`) |
 | `--dry-run` | `-DryRun` | Pré-visualiza tudo que seria tocado — não escreve nada |
 | `--list` | `-List` | Catálogo/ferramentas/squads em JSON no stdout (nunca usa rede) |
 | `--status` | `-Status` | Só detecta + atualiza o painel do guia (sem rede) |

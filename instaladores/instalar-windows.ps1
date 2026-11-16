@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # instalar-windows.ps1 — Agency Agents Store (Windows)
 #
 # Detects your coding tools (Claude Code, ZCode, Codex, Gemini CLI...),
@@ -13,7 +13,8 @@
 #
 # Usage (PowerShell):
 #   .\instalar-windows.ps1                                # interactive
-#   .\instalar-windows.ps1 -Plan agency-plan.json         # guide plan (path optional: auto-search)
+#   .\instalar-windows.ps1 -Plan agency-plan.json         # guide plan (explicit path)
+#   .\instalar-windows.ps1 -PlanAuto                      # find & use agency-plan.json automatically
 #   .\instalar-windows.ps1 -Lang pt -Plan agency-plan.json
 #   .\instalar-windows.ps1 -Tool zcode,codex -Squad pre   # non-interactive (CI/scripts)
 #   .\instalar-windows.ps1 -Tool cursor -Dir C:\my\project -Squad treino
@@ -26,6 +27,7 @@
 [CmdletBinding()]
 param(
   [string]$Plan = "",
+  [switch]$PlanAuto,
   [string]$Lang = "",
   [switch]$Status,
   [switch]$Json,
@@ -48,9 +50,27 @@ $ValidLangs = @("en","pt","es","fr","de")
 $PlanNames  = @("agency-plan.json", "plano-agencia.json")
 $Ts = Get-Date -Format "yyyyMMdd-HHmmss"
 
-function Say($m)  { Write-Host "[ok]  $m" -ForegroundColor Green }
-function Warn($m) { Write-Host "[!!]  $m" -ForegroundColor Yellow }
+function Say($m)  {
+  if ($Json -or $List) { [Console]::Error.WriteLine("[ok]  $m") }   # stdout é dado estruturado
+  else { Write-Host "[ok]  $m" -ForegroundColor Green }
+}
+function Warn($m) {
+  # -Json/-List: stdout é dado estruturado — avisos vão para stderr (igual ao driver Python)
+  if ($Json -or $List) { [Console]::Error.WriteLine("[!!]  $m") }
+  else { Write-Host "[!!]  $m" -ForegroundColor Yellow }
+}
 function Die($m)  { Write-Host "[err] $m" -ForegroundColor Red; exit 1 }
+
+# PS 5.1: com $ErrorActionPreference="Stop", o stderr de um comando NATIVO redirecionado
+# (2>$null) vira NativeCommandError FATAL — e git/bash sempre escrevem em stderr.
+# Todo comando nativo passa por aqui: roda com EAP Continue e devolve stdout + exit code.
+function Invoke-Native($sb) {
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  $out = $null; $code = 1
+  try { $out = (& $sb) 2>$null; $code = $LASTEXITCODE } catch { $code = 1 } finally { $ErrorActionPreference = $prev }
+  return @{ Out = @($out); Code = $code }
+}
 
 # ---------- i18n: fonte única compartilhada com o driver Linux/macOS ----------
 $I18nFile = @((Join-Path $ScriptDir "..\dados\i18n-instalador.json"), (Join-Path $StoreDir "dados\i18n-instalador.json")) |
@@ -72,7 +92,8 @@ function Read-SavedLang {
 function Save-Lang($l) {
   try {
     New-Item -ItemType Directory -Force -Path $Catalog | Out-Null
-    "lang=$l" | Set-Content $ConfigFile -Encoding UTF8
+    # UTF-8 SEM BOM — o driver Python lê o mesmo arquivo (Set-Content UTF8 no PS5.1 grava BOM)
+    [System.IO.File]::WriteAllText($ConfigFile, "lang=$l`n", (New-Object System.Text.UTF8Encoding($false)))
   } catch {}
 }
 if ($Lang -and $ValidLangs -notcontains $Lang) {
@@ -88,11 +109,16 @@ if (-not $Lang -and -not $Json -and -not $List -and [Environment]::UserInteracti
   Write-Host "  1) English   2) Português   3) Español   4) Français   5) Deutsch"
   $default = if ($Lang) { $Lang } else { "en" }
   $ln = Read-Host "1-5 [$default]"
-  if (-not $ln) { $ln = $default }
-  $Lang = @("en","pt","es","fr","de")[[int]$ln - 1]
+  $idx = 0
+  if ($ln -and [int]::TryParse($ln.Trim(), [ref]$idx) -and $idx -ge 1 -and $idx -le 5) {
+    $Lang = @("en","pt","es","fr","de")[$idx - 1]
+  } else {
+    $Lang = $default   # input inválido/vazio → padrão detectado (locale), sem crash
+  }
 }
 if (-not $Lang) { $Lang = "en" }
-if ($Lang -ne (Read-SavedLang)) { Save-Lang $Lang }
+# -Json/-List têm contrato "writes nothing": idioma NÃO é persistido nesses modos (igual ao driver Python)
+if (-not ($Json -or $List) -and $Lang -ne (Read-SavedLang)) { Save-Lang $Lang }
 $M = $I18N.$Lang
 function Msg($key) { $s = $M.$key; if (-not $s) { $s = $I18N.en.$key }; return $s }
 function MsgF($key, $vals) { $s = Msg $key; if ($vals) { return ($s -f $vals) }; return $s }
@@ -169,7 +195,7 @@ function Get-FrontmatterName($f) {
   return $null
 }
 
-# ---------- plano: caminho explícito ou busca automática ----------
+# ---------- plano: caminho explícito ou busca automática (-PlanAuto / -Plan "") ----------
 $SquadsFile = @((Join-Path $ScriptDir "..\dados\squads.json"), (Join-Path $StoreDir "dados\squads.json")) |
   Where-Object { Test-Path $_ } | Select-Object -First 1
 
@@ -187,9 +213,9 @@ function Find-PlanAuto {
   return $null
 }
 $plano = $null
-if ($Plan -ne "" -or ($PSBoundParameters.ContainsKey("Plan"))) {
+if ($PlanAuto -or $Plan -ne "" -or $PSBoundParameters.ContainsKey("Plan")) {
   $p = $Plan
-  if (-not $p) {
+  if ($PlanAuto -or -not $p) {
     $p = Find-PlanAuto
     if (-not $p) { Die (MsgF "err_plan" @("agency-plan.json (searched ., .., Downloads, Documents)")) }
     Say (MsgF "plan_autodetected" @($p))
@@ -213,24 +239,25 @@ if (Test-Path (Join-Path $Catalog ".git")) {
   $HaveCatalog = $true
   if (-not ($Status -or $Json -or $List)) {
     Say (MsgF "cat_update" @($Catalog))
-    & git -C $Catalog pull --ff-only 2>$null | Out-Null
+    $r = Invoke-Native { & git -C $Catalog pull --ff-only }
+    if ($r.Code -ne 0) { Warn "catalog update skipped" }
   }
 } elseif (Test-Path (Join-Path $Catalog "divisions.json")) {
   $HaveCatalog = $true
 } elseif (-not ($Status -or $Json -or $List)) {
   Say (Msg "cat_clone")
-  & git clone --depth 1 https://github.com/msitarzewski/agency-agents.git $Catalog 2>$null | Out-Null
-  if (-not (Test-Path $Catalog)) { Die (Msg "cat_fail") }
+  $r = Invoke-Native { & git clone --depth 1 https://github.com/msitarzewski/agency-agents.git $Catalog }
+  if (-not (Test-Path $Catalog) -or $r.Code -ne 0) { Die (Msg "cat_fail") }
   $HaveCatalog = $true
 } else {
   Warn (MsgF "cat_status_missing" @($Catalog))
 }
 $CatCommit = "?"; $CatDate = "?"
 if (Test-Path (Join-Path $Catalog ".git")) {
-  $CatCommit = (& git -C $Catalog rev-parse --short HEAD 2>$null)
-  if (-not $CatCommit) { $CatCommit = "?" }
-  $CatDate = (& git -C $Catalog log -1 --format=%cs 2>$null)   # data real do commit, não a data de hoje
-  if (-not $CatDate) { $CatDate = "?" }
+  $r = Invoke-Native { & git -C $Catalog rev-parse --short HEAD }
+  if ($r.Code -eq 0 -and $r.Out -and "$($r.Out[0])".Trim()) { $CatCommit = "$($r.Out[0])".Trim() }
+  $r = Invoke-Native { & git -C $Catalog log -1 --format=%cs }   # data real do commit, não a de hoje
+  if ($r.Code -eq 0 -and $r.Out -and "$($r.Out[0])".Trim()) { $CatDate = "$($r.Out[0])".Trim() }
 }
 $Stems = @()
 if ($HaveCatalog) { $Stems = Get-CatalogStems }
@@ -294,8 +321,16 @@ if ($List) {
 
 # ---------- helpers de instalação ----------
 # caminho MSYS via cygpath do próprio Git (robusto p/ drive != C:, espaços, &)
-function To-Msys($winPath) { (& $Bash -c 'cygpath -u "$1"' "cygpath" "$winPath" 2>$null) }
-function To-Win($msysPath) { (& $Bash -c 'cygpath -w "$1"' "cygpath" "$msysPath" 2>$null) }
+function To-Msys($winPath) {
+  $r = Invoke-Native { & $Bash -c 'cygpath -u "$1"' "cygpath" "$winPath" }
+  if ($r.Code -eq 0 -and $r.Out) { return "$($r.Out -join '')".Trim() }
+  return $null
+}
+function To-Win($msysPath) {
+  $r = Invoke-Native { & $Bash -c 'cygpath -w "$1"' "cygpath" "$msysPath" }
+  if ($r.Code -eq 0 -and $r.Out) { return "$($r.Out -join '')".Trim() }
+  return $null
+}
 
 function Backup-IfChanged($dst, $src, $toolId) {
   if (-not (Test-Path $dst)) { return }
@@ -322,6 +357,8 @@ function Get-SquadSlugs($name) {
   if (-not $map.ContainsKey($name)) { Die (MsgF "err_squad" @($name)) }
   if (-not $SquadsFile) { Die (Msg "err_no_data") }
   $sq = (Get-Content $SquadsFile -Raw -Encoding UTF8 | ConvertFrom-Json).($map[$name])
+  # JSON corrompido/chave ausente NUNCA vira "instala tudo em silêncio" (igual ao driver Python)
+  if (-not $sq -or -not $sq.agentes) { Die (Msg "err_no_data") }
   return @($sq.agentes | ForEach-Object { $_.slug })
 }
 
@@ -352,46 +389,53 @@ function Install-Rendered($t) {
   $dest = Join-Path $BaseDir ($t.dest -replace "/", "\")
   if ($DryRun) { return }
   $outWin = Join-Path $env:TEMP ("agencia-out-" + [guid]::NewGuid().ToString("N").Substring(0,6))
-  $catalogMsys = To-Msys $Catalog
-  $outMsys = To-Msys $outWin
-  if (-not $catalogMsys -or -not $outMsys) { Warn "cygpath failed (Git for Windows install broken?)"; return }
-  & $Bash -c 'cd "$1" && bash scripts/convert.sh --tool "$2" --out "$3"' "convert" "$catalogMsys" "$($t.kebab)" "$outMsys" 2>$null | Out-Null
-  $src = To-Win "$outMsys/$($t.kebab)/$($t.sub)"
-  if (-not $src -or -not (Test-Path $src)) { Warn "render $($t.kebab): $($t.sub) missing"; return }
-  if ($t.mode -eq "arquivo") {
-    New-Item -ItemType Directory -Force -Path $dest | Out-Null
-    Get-ChildItem $src -Recurse -File | ForEach-Object {
-      if ($script:Slugs -and $script:Slugs -notcontains $_.BaseName) { return }
-      Backup-IfChanged (Join-Path $dest $_.Name) $_.FullName $t.id
-      Copy-Item $_.FullName $dest -Force
+  try {
+    $catalogMsys = To-Msys $Catalog
+    $outMsys = To-Msys $outWin
+    if (-not $catalogMsys -or -not $outMsys) { Warn "cygpath failed (Git for Windows install broken?)"; return }
+    $r = Invoke-Native { & $Bash -c 'cd "$1" && bash scripts/convert.sh --tool "$2" --out "$3"' "convert" "$catalogMsys" "$($t.kebab)" "$outMsys" }
+    $src = To-Win "$outMsys/$($t.kebab)/$($t.sub)"
+    if ($r.Code -ne 0 -or -not $src -or -not (Test-Path $src)) { Warn "render $($t.kebab): $($t.sub) missing"; return }
+    if ($t.mode -eq "arquivo") {
+      New-Item -ItemType Directory -Force -Path $dest | Out-Null
+      Get-ChildItem $src -Recurse -File | ForEach-Object {
+        if ($script:Slugs -and $script:Slugs -notcontains $_.BaseName) { return }
+        Backup-IfChanged (Join-Path $dest $_.Name) $_.FullName $t.id
+        Copy-Item $_.FullName $dest -Force
+      }
+    } else {
+      New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+      Get-ChildItem $src -Directory | ForEach-Object {
+        if ($script:Slugs -and $script:Slugs -notcontains $_.Name) { return }
+        $target = Join-Path $dest $_.Name
+        Backup-IfChanged $target $_.FullName $t.id
+        if (Test-Path $target) { Remove-Item $target -Recurse -Force }
+        Copy-Item $_.FullName $target -Recurse -Force
+      }
     }
-  } else {
-    New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
-    Get-ChildItem $src -Directory | ForEach-Object {
-      if ($script:Slugs -and $script:Slugs -notcontains $_.Name) { return }
-      $target = Join-Path $dest $_.Name
-      Backup-IfChanged $target $_.FullName $t.id
-      if (Test-Path $target) { Remove-Item $target -Recurse -Force }
-      Copy-Item $_.FullName $target -Recurse -Force
-    }
+  } finally {
+    Remove-Item $outWin -Recurse -Force -ErrorAction SilentlyContinue   # limpa mesmo em early-return
   }
-  Remove-Item $outWin -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 function Install-Roster($t) {
   $dest = Join-Path $BaseDir ($t.dest -replace "/", "\")
   if ($DryRun) { return }
   $outWin = Join-Path $env:TEMP ("agencia-out-" + [guid]::NewGuid().ToString("N").Substring(0,6))
-  $catalogMsys = To-Msys $Catalog
-  $outMsys = To-Msys $outWin
-  & $Bash -c 'cd "$1" && bash scripts/convert.sh --tool "$2" --out "$3"' "convert" "$catalogMsys" "$($t.kebab)" "$outMsys" 2>$null | Out-Null
-  $src = To-Win "$outMsys/$($t.kebab)/$($t.rosterFile)"
-  if (-not $src -or -not (Test-Path $src -PathType Leaf)) { Warn "render $($t.kebab): roster file missing"; return }
-  if ($script:Slugs) { Warn (MsgF "roster_note" @($t.label)) }
-  New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
-  Backup-IfChanged $dest $src $t.id
-  Copy-Item $src $dest -Force
-  Remove-Item $outWin -Recurse -Force -ErrorAction SilentlyContinue
+  try {
+    $catalogMsys = To-Msys $Catalog
+    $outMsys = To-Msys $outWin
+    if (-not $catalogMsys -or -not $outMsys) { Warn "cygpath failed (Git for Windows install broken?)"; return }
+    $r = Invoke-Native { & $Bash -c 'cd "$1" && bash scripts/convert.sh --tool "$2" --out "$3"' "convert" "$catalogMsys" "$($t.kebab)" "$outMsys" }
+    $src = To-Win "$outMsys/$($t.kebab)/$($t.rosterFile)"
+    if ($r.Code -ne 0 -or -not $src -or -not (Test-Path $src -PathType Leaf)) { Warn "render $($t.kebab): roster file missing"; return }
+    if ($script:Slugs) { Warn (MsgF "roster_note" @($t.label)) }
+    New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+    Backup-IfChanged $dest $src $t.id
+    Copy-Item $src $dest -Force
+  } finally {
+    Remove-Item $outWin -Recurse -Force -ErrorAction SilentlyContinue   # limpa mesmo em early-return
+  }
 }
 
 function Install-One($t) {
@@ -428,6 +472,12 @@ function Install-One($t) {
 function Uninstall-One($t) {
   if ($t.compat -eq "nao") { Warn (MsgF "unsupported_os" @($t.label, "Windows")); return }
   $dest = Join-Path $BaseDir ($t.dest -replace "/", "\")
+  if ($DryRun) {
+    # dry-run também vale para remoção: NADA é movido, só pré-visualizado
+    $n = Get-AgencyCount $t $BaseDir $Stems
+    Say (MsgF "dry_run_remove" @($t.label, $n))
+    return
+  }
   if ($t.kind -eq "roster") {
     if (Test-Path $dest -PathType Leaf) { Warn (MsgF "uninstall_skip" @($t.label, $dest)) }
     else { Warn (MsgF "uninstall_none" @($t.label)) }
