@@ -5,6 +5,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions are tagged `vX.Y.Z` and **must equal** `version` in `dados/meta.json`
 (that is also the version the guide's update badge compares against).
 
+## [2.3.0] — 2026-11-16
+
+### Added
+- **PWA — o guia virou app instalável e offline** (nova minor):
+  - `manifest.webmanifest` (nome, ícones, cores) + `sw.js` (service worker com cache
+    por versão: release novo → sw muda → browser reinstala e apaga o cache antigo;
+    navegação *network-first* para o guia propagar updates na hora, *cache-first*
+    para estáticos; file:// ignora o registro — o guia baixado segue intacto)
+  - `index.html` na raiz (redirect) — o GitHub Pages passa a abrir direto o guia
+  - `pwa-icons/` — 4 ícones gerados por `gerador/gen_icons.py` (PNG puro, sem
+    dependências; bússola nas cores do guia; variante maskable + Apple touch;
+    regeneração determinística verificada na CI)
+  - `gerador/package_pwa.py` — ZIP determinístico `agency-agents-pwa-vX.Y.Z.zip`
+    (guia como `index.html`, manifest, sw, ícones, COMO-HOSPEDAR.md bilíngue)
+    anexado como **asset do release** — solte na raiz de qualquer hospedagem
+    estática HTTPS e instale pelo navegador
+  - CI: determinismo dos ícones (regenera e exige zero diff), build do ZIP,
+    gate de atualização estendido a manifest/sw/index; 14 checks novos no
+    `tests/test_guide.py` (total 55+ verificações)
+
+
 ## [2.2.2] — 2026-11-16
 
 Hotfix: a CI recém-adicionada (job Windows que executa o instalador de verdade) pegou um

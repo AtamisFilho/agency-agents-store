@@ -1,6 +1,6 @@
 {
   "_meta": "Fonte única de verdade do build.py (gerador/build.py) e dos testes. Nada de contagens/listas hard-coded no código: quando o catálogo crescer, atualize APENAS este arquivo (e os dados traduzidos).",
-  "version": "2.2.2",
+  "version": "2.3.0",
   "ourRepo": "AtamisFilho/agency-agents-store",
   "catalogRepo": "msitarzewski/agency-agents",
   "expectedTools": 16,

@@ -39,10 +39,33 @@ jobs:
       - name: Guide is up to date with dados/
         run: |
           python3 gerador/build.py
-          if ! git diff --exit-code -- guia-especialistas-agencia.html; then
-            echo "::error::guia-especialistas-agencia.html está desatualizado — rode 'python3 gerador/build.py' e commite"
+          if ! git diff --exit-code -- guia-especialistas-agencia.html manifest.webmanifest sw.js index.html; then
+            echo "::error::artefatos do guia/PWA desatualizados — rode 'python3 gerador/build.py' e commite"
             exit 1
           fi
+
+      - name: PWA icons are deterministic (regenerate → no diff)
+        run: |
+          python3 gerador/gen_icons.py
+          if ! git diff --exit-code -- pwa-icons; then
+            echo "::error::pwa-icons divergiu da regeneração — commite os ícones novos"
+            exit 1
+          fi
+
+      - name: PWA release package builds
+        run: |
+          python3 gerador/package_pwa.py
+          python3 - <<'EOF'
+          import glob, zipfile
+          zips = glob.glob("agency-agents-pwa-*.zip")
+          assert len(zips) == 1, zips
+          with zipfile.ZipFile(zips[0]) as z:
+              names = z.namelist()
+          for need in ("index.html", "manifest.webmanifest", "sw.js", "COMO-HOSPEDAR.md",
+                       "pwa-icons/icon-192.png", "pwa-icons/icon-maskable-512.png"):
+              assert need in names, f"falta {need} no zip"
+          print("zip OK:", zips[0], "->", len(names), "arquivos")
+          EOF
 
       - name: Installer suite (adversarial — uses network to clone the catalog)
         run: bash tests/run-tests.sh

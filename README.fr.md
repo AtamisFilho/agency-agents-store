@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.2-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
 
 **Un guide HTML + des installateurs qui amènent 283 spécialistes de l'IA dans vos outils de programmation** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity et plus encore).
 
@@ -110,6 +110,17 @@ Exemples :
 ## Mises à jour automatiques
 
 Le guide vérifie (toutes les 24h ou au clic sur **🔄 Vérifier les mises à jour**) les releases officielles du catalogue, de l'app et de ce projet. Si du neuf sort, un badge apparaît en haut. Les releases de ce projet suivent [CHANGELOG.md](CHANGELOG.md) — le tag (`vX.Y.Z`) correspond toujours à la version du guide.
+
+## Installer comme app (PWA)
+
+Le guide est aussi une **app installable et 100 % hors ligne** (PWA) :
+
+- **GitHub Pages :** ouvrez https://atamisfilho.github.io/agency-agents-store/ et choisissez **Installer l'app** (icône dans la barre d'adresse, ou menu du navigateur → « Installer » / « Ajouter à l'écran d'accueil »).
+- **Hébergement perso :** récupérez `agency-agents-pwa-vX.Y.Z.zip` dans les [releases](https://github.com/AtamisFilho/agency-agents-store/releases) et déposez les fichiers sur n'importe quel hébergement statique HTTPS — c'est tout.
+
+Le premier chargement met tout en cache ; ensuite ça marche sans internet, et le service worker maintient l'app à jour à la visite en ligne suivante. (Installer la PWA place le *guide* sur votre appareil — les spécialistes, eux, continuent d'aller dans vos outils de code via l'installateur ci-dessus.)
+
+Fichiers du PWA : `manifest.webmanifest`, `sw.js`, `index.html`, `pwa-icons/` (générés par `gerador/gen_icons.py`), ZIP du release via `gerador/package_pwa.py`.
 
 ## Utiliser les spécialistes
 

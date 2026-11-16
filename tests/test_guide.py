@@ -99,6 +99,30 @@ check("paths de agentes seguros", not bad_paths, str(bad_paths[:3]))
 check("wizard: comando windows na raiz", "instaladores\\\\instalar-windows.ps1 -Plan" in h)
 check("wizard: comando posix na raiz", "./instaladores/instalar-linux.sh --plan" in h)
 
+# 12. PWA: manifest, service worker, ícones, index (raiz Pages), head tags e registro
+mf_path = REPO / "manifest.webmanifest"
+sw_path = REPO / "sw.js"
+idx_path = REPO / "index.html"
+check("manifest.webmanifest existe", mf_path.is_file())
+if mf_path.is_file():
+    m = json.loads(mf_path.read_text(encoding="utf-8"))
+    check("manifest: version = meta", m.get("version") == VERSION)
+    check("manifest: start_url ./ e standalone", m.get("start_url") == "./" and m.get("display") == "standalone")
+    icons = m.get("icons", [])
+    check("manifest: 3 ícones e existem no disco", len(icons) == 3 and all((REPO / i["src"]).is_file() for i in icons))
+    check("manifest: maskable presente", any(i.get("purpose") == "maskable" for i in icons))
+check("sw.js existe e embute a versão (const VER)", sw_path.is_file() and f'const VER = "v{VERSION}"' in sw_path.read_text(encoding="utf-8"))
+swt = sw_path.read_text(encoding="utf-8") if sw_path.is_file() else ""
+check("sw: guia nos assets pré-cacheados", "guia-especialistas-agencia.html" in swt)
+check("sw: navegação network-first (updates propagam)", 'req.mode === "navigate"' in swt)
+check("sw: apaga caches de versões antigas", "caches.delete" in swt)
+check("index.html aponta para o guia", idx_path.is_file() and "guia-especialistas-agencia.html" in idx_path.read_text(encoding="utf-8"))
+check("head PWA no guia (manifest + theme-color + apple-touch)",
+      'rel="manifest"' in h and "theme-color" in h and "apple-touch-icon" in h)
+check("registro de SW com guarda https/localhost (file:// não quebra)",
+      "serviceWorker" in h and 'location.protocol === "https:"' in h)
+check("sem placeholders __PWA_HEAD__/__PWA_REG__", "__PWA_HEAD__" not in h and "__PWA_REG__" not in h)
+
 print()
 if fails:
     print(f"FALHAS: {len(fails)} → {fails}")

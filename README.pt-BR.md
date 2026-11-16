@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.2-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
 
 **Um guia em HTML + instaladores que trazem 283 especialistas de IA para as suas ferramentas de código** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity e outras).
 
@@ -110,6 +110,17 @@ Exemplos:
 ## Atualizações automáticas
 
 O guia confere (a cada 24h ou quando você clicar em **🔄 Verificar atualizações**) os releases oficiais do catálogo, do app e deste projeto. Se algo novo sair, aparece um selo no topo. Os releases deste projeto seguem o [CHANGELOG.md](CHANGELOG.md) — a tag (`vX.Y.Z`) sempre bate com a versão do guia.
+
+## Instalar como app (PWA)
+
+O guia também é um **app instalável e 100% offline** (PWA):
+
+- **GitHub Pages:** abra https://atamisfilho.github.io/agency-agents-store/ e escolha **Instalar app** (ícone na barra de endereço, ou menu do navegador → "Instalar" / "Adicionar à tela inicial").
+- **Hospedagem própria:** baixe o `agency-agents-pwa-vX.Y.Z.zip` nos [releases](https://github.com/AtamisFilho/agency-agents-store/releases) e solte os arquivos em qualquer hospedagem estática HTTPS — pronto.
+
+O primeiro acesso guarda tudo; depois funciona sem internet nenhuma, e o service worker mantém o app atualizado no próximo acesso online. (Instalar o PWA coloca o *guia* no seu dispositivo — os especialistas em si continuam indo para as suas ferramentas de código com o instalador acima.)
+
+Arquivos do PWA: `manifest.webmanifest`, `sw.js`, `index.html`, `pwa-icons/` (gerados por `gerador/gen_icons.py`), ZIP do release via `gerador/package_pwa.py`.
 
 ## Como usar os especialistas
 

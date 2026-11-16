@@ -497,6 +497,7 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+__PWA_HEAD__
 <title>Specialist Guide — Agency Agents</title>
 <style>
 :root{
@@ -1034,6 +1035,7 @@ document.addEventListener("keydown", e=>{ if (e.key === "/" && document.activeEl
 DATA.bySlug = Object.fromEntries(DATA.agents.map(a=>[a.slug, a]));
 renderAll();
 apply();
+__PWA_REG__
 </script>
 </body>
 </html>
@@ -1050,11 +1052,132 @@ for a in payload["agents"]:
 
 payload_json = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")  # XSS-safe: nenhum </script> literal
 ui_json = json.dumps(UI_I18N, ensure_ascii=False).replace("</", "<\\/")
-html = HTML.replace("__PAYLOAD__", payload_json).replace("__UI__", ui_json)
+
+# ---------- PWA (app instalável/offline): manifest + service worker + registro ----------
+PWA_HEAD = (
+    '<link rel="manifest" href="manifest.webmanifest">\n'
+    '<meta name="theme-color" content="#4f46e5">\n'
+    '<link rel="apple-touch-icon" href="pwa-icons/apple-touch-icon.png">\n'
+    '<meta name="mobile-web-app-capable" content="yes">\n'
+    '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+    '<meta name="apple-mobile-web-app-status-bar-style" content="default">\n'
+    '<meta name="apple-mobile-web-app-title" content="Agency Guide">'
+)
+PWA_REG = """/* PWA: registra o service worker — só em contexto seguro; file:// ignora (guia offline continua igual) */
+if ((location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1") && "serviceWorker" in navigator) {
+  addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}"""
+
+MANIFEST = {
+    "name": "Agency Agents — Specialist Guide",
+    "short_name": "Agency Guide",
+    "description": "Offline catalog of 283 AI agency specialists — who they are, what they do and when to call them. EN/PT/ES/FR/DE.",
+    "lang": "en",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#f6f7f9",
+    "theme_color": "#4f46e5",
+    "version": GUIA_VERSION,
+    "icons": [
+        {"src": "pwa-icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "pwa-icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "pwa-icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+    ],
+}
+
+SW_JS = """/* sw.js — service worker do guia. GERADO por gerador/build.py (a versão entra no nome do
+   cache: release novo → sw.js muda → browser reinstala → cache antigo é apagado). */
+const VER = "__VER__";
+const CACHE = "agencia-guia-" + VER;
+const ASSETS = [
+  "./",
+  "./guia-especialistas-agencia.html",
+  "./manifest.webmanifest",
+  "./pwa-icons/icon-192.png",
+  "./pwa-icons/icon-512.png",
+  "./pwa-icons/icon-maskable-512.png",
+  "./pwa-icons/apple-touch-icon.png"
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.allSettled(ASSETS.map((u) => cache.add(new Request(u, { cache: "reload" }))));
+    self.skipWaiting();
+  })());
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin !== location.origin) return;  // checagem de updates (GitHub API) vai direto à rede
+  if (req.mode === "navigate") {
+    // network-first: online pega o guia novo na hora; offline cai no cache
+    event.respondWith(
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+        return res;
+      }).catch(() => caches.match(req).then((r) => r || caches.match(ASSETS[1])))
+    );
+    return;
+  }
+  // estáticos (ícones, manifest): cache-first
+  event.respondWith(
+    caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+      }
+      return res;
+    }))
+  );
+});
+"""
+
+INDEX_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="0; url=guia-especialistas-agencia.html">
+<title>Agency Agents — Specialist Guide</title>
+</head>
+<body>
+<p><a href="guia-especialistas-agencia.html">Open the guide / Abrir o guia</a></p>
+</body>
+</html>
+"""
+
+for _icon in ("icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"):
+    if not (REPO / "pwa-icons" / _icon).is_file():
+        sys.exit(f"pwa-icons/{_icon} ausente — rode primeiro: python3 gerador/gen_icons.py")
+
+html = (HTML
+        .replace("__PAYLOAD__", payload_json)
+        .replace("__UI__", ui_json)
+        .replace("__PWA_HEAD__", PWA_HEAD)
+        .replace("__PWA_REG__", PWA_REG))
 out1 = REPO / "guia-especialistas-agencia.html"
 out1.write_text(html, encoding="utf-8")
 docs = Path.home() / "Documentos" / "guia-especialistas-agencia.html"
 if docs.parent.exists():
     docs.write_text(html, encoding="utf-8")
     print("gerado também:", docs)
+(REPO / "manifest.webmanifest").write_text(
+    json.dumps(MANIFEST, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+(REPO / "sw.js").write_text(SW_JS.replace("__VER__", "v" + GUIA_VERSION), encoding="utf-8")
+(REPO / "index.html").write_text(INDEX_HTML, encoding="utf-8")
+print("PWA: manifest.webmanifest, sw.js (cache agencia-guia-v%s), index.html (redirect Pages)" % GUIA_VERSION)
 print("gerado:", out1, f"({len(html)//1024} KB, v{GUIA_VERSION}, 5 idiomas)")

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.2-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
 
 **Una guía HTML + instaladores que traen 283 especialistas de IA a tus herramientas de programación** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity y más).
 
@@ -110,6 +110,17 @@ Ejemplos:
 ## Actualizaciones automáticas
 
 La guía comprueba (cada 24h o al pulsar **🔄 Verificar actualizaciones**) los releases oficiales del catálogo, de la app y de este proyecto. Si sale algo nuevo, aparece un sello arriba. Los releases de este proyecto siguen [CHANGELOG.md](CHANGELOG.md) — el tag (`vX.Y.Z`) siempre coincide con la versión de la guía.
+
+## Instalar como app (PWA)
+
+La guía también es una **app instalable y 100% offline** (PWA):
+
+- **GitHub Pages:** abre https://atamisfilho.github.io/agency-agents-store/ y elige **Instalar app** (icono en la barra de direcciones, o menú del navegador → "Instalar" / "Añadir a la pantalla de inicio").
+- **Alojamiento propio:** descarga el `agency-agents-pwa-vX.Y.Z.zip` de los [releases](https://github.com/AtamisFilho/agency-agents-store/releases) y suelta los archivos en cualquier alojamiento estático HTTPS — listo.
+
+El primer acceso lo guarda todo; después funciona sin internet, y el service worker lo mantiene actualizado en la próxima visita online. (Instalar la PWA pone la *guía* en tu dispositivo — los especialistas siguen yendo a tus herramientas de código con el instalador de arriba.)
+
+Archivos del PWA: `manifest.webmanifest`, `sw.js`, `index.html`, `pwa-icons/` (generados por `gerador/gen_icons.py`), ZIP del release vía `gerador/package_pwa.py`.
 
 ## Cómo usar los especialistas
 

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
-[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.2-blue)](CHANGELOG.md)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.3.0-blue)](CHANGELOG.md)
 
 **Ein HTML-Leitfaden + Installer, die 283 KI-Spezialisten in deine Coding-Tools bringen** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity und mehr).
 
@@ -110,6 +110,17 @@ Beispiele:
 ## Automatische Updates
 
 Der Guide prüft (alle 24h oder bei Klick auf **🔄 Jetzt nach Updates suchen**) die offiziellen Releases des Katalogs, der App und dieses Projekts. Wenn etwas Neues erscheint, zeigt ein Badge oben. Die Releases dieses Projekts folgen [CHANGELOG.md](CHANGELOG.md) — der Tag (`vX.Y.Z`) entspricht immer der Guide-Version.
+
+## Als App installieren (PWA)
+
+Der Guide ist auch eine **installierbare, komplett offline funktionierende App** (PWA):
+
+- **GitHub Pages:** öffne https://atamisfilho.github.io/agency-agents-store/ und wähle **App installieren** (Symbol in der Adressleiste, oder Browser-Menü → „Installieren" / „Zum Startbildschirm hinzufügen").
+- **Eigenes Hosting:** lade `agency-agents-pwa-vX.Y.Z.zip` aus den [Releases](https://github.com/AtamisFilho/agency-agents-store/releases) und lege die Dateien auf einen beliebigen statischen HTTPS-Host — fertig.
+
+Der erste Ladevorgang cached alles; danach läuft es ohne Internet, und der Service Worker hält die App beim nächsten Online-Besitz aktuell. (Die PWA installiert den *Guide* auf dem Gerät — die Spezialisten selbst landen weiterhin per Installer oben in deinen Coding-Tools.)
+
+PWA-Dateien: `manifest.webmanifest`, `sw.js`, `index.html`, `pwa-icons/` (generiert von `gerador/gen_icons.py`), Release-ZIP via `gerador/package_pwa.py`.
 
 ## Die Spezialisten benutzen
 

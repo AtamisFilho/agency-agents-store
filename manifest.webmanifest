@@ -1,0 +1,33 @@
+{
+  "name": "Agency Agents — Specialist Guide",
+  "short_name": "Agency Guide",
+  "description": "Offline catalog of 283 AI agency specialists — who they are, what they do and when to call them. EN/PT/ES/FR/DE.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f7f9",
+  "theme_color": "#4f46e5",
+  "version": "2.3.0",
+  "icons": [
+    {
+      "src": "pwa-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa-icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

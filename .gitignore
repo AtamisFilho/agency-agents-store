@@ -8,3 +8,6 @@ plano-agencia.json
 Thumbs.db
 __pycache__/
 *.pyc
+
+# zip do PWA montado para anexar ao release (gerador/package_pwa.py)
+agency-agents-pwa-*.zip
