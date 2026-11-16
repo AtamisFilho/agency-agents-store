@@ -144,6 +144,7 @@ jobs:
           $o3 = powershell -NoProfile -ExecutionPolicy Bypass -File instaladores\instalar-windows.ps1 -Tool zcode -Squad pre -Dir "C:\__definitely_missing_dir__" 2>&1
           if ($LASTEXITCODE -eq 0) { Write-Error "-Dir missing should be rejected"; exit 1 }
           Write-Host "PS1 rejected branches OK"
+          exit 0   # runner propaga $LASTEXITCODE residual (o -Dir acima morreu com 1 de propósito)
 
       - name: Smoke — DryRun previews and writes nothing (PS 5.1)
         shell: powershell
