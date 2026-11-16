@@ -1,5 +1,9 @@
 # 🧭 Agency Agents Store — Spezialisten-Leitfaden & Installer
 
+[![CI](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml/badge.svg)](https://github.com/AtamisFilho/agency-agents-store/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/AtamisFilho/agency-agents-store)](https://github.com/AtamisFilho/agency-agents-store/releases)
+[![CHANGELOG](https://img.shields.io/badge/CHANGELOG-v2.2.0-blue)](CHANGELOG.md)
+
 **Ein HTML-Leitfaden + Installer, die 283 KI-Spezialisten in deine Coding-Tools bringen** (Claude Code, ZCode, Codex, Gemini CLI, GitHub Copilot, Cursor, Antigravity und mehr).
 
 Gebaut für „Vibe Coder“, die ein Team digitaler Spezialisten an ihrer Seite haben möchten — ohne Fachchinesisch, ohne Aufwand.
@@ -10,75 +14,116 @@ Gebaut für „Vibe Coder“, die ein Team digitaler Spezialisten an ihrer Seite
 
 ---
 
-## Was drin ist
+## Mit einer Zeile installieren
+
+**Linux/macOS** (benötigt `git` + `python3`):
+```bash
+curl -fsSL https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main/instaladores/instalar.sh | bash
+```
+
+**Windows** (PowerShell — benötigt [Git for Windows](https://git-scm.com/download/win)):
+```powershell
+irm https://raw.githubusercontent.com/AtamisFilho/agency-agents-store/main/instaladores/instalar.ps1 | iex
+```
+
+Die Eine-Zeile-Installation lädt Installer, Übersetzungen und den Guide nach `~/.agency-agents-store` und führt alles von dort aus. Lieber das komplette Repository? **Code → Download ZIP** und weiterlesen.
+
+## Was hier drin ist
 
 | Datei/Ordner | Was es ist |
 |---|---|
-| `guia-especialistas-agencia.html` | **Der Leitfaden.** Doppelklicken zum Öffnen — funktioniert offline. Suche, Filter, ein „deine Maschine“-Panel und jeder Spezialist in einfacher Sprache erklärt, mit 4 Praxis-Situationen aus dem echten Leben. Verfügbar auf Englisch, Portugiesisch, Spanisch, Französisch und Deutsch. |
-| `instaladores/instalar-linux.sh` | Installer für **Linux und macOS**. |
-| `instaladores/instalar-windows.ps1` | Installer für **Windows** (braucht nur Git for Windows). |
-| `gerador/build.py` | Baut den Leitfaden aus `dados/` neu auf (für Wartung). |
-| `dados/` | Übersetzter Katalog + Praxis-Situationen (JSON). |
+| `guia-especialistas-agencia.html` | **Der Guide.** Doppelklick zum Öffnen — funktioniert offline. Suche, Filter, Panel „deine Maschine“ und jeder Spezialist einfach erklärt, mit 4 echten Einsatzsituationen. Verfügbar in Englisch, Portugiesisch, Spanisch, Französisch und Deutsch. |
+| `instaladores/instalar.sh` / `instalar.ps1` | **Eine-Zeile-Bootstraps** (die Befehle oben). |
+| `instaladores/instalar-linux.sh` | Installer für **Linux und macOS** (schlanker Wrapper — prüft Voraussetzungen, ruft dann den Kern auf). |
+| `instaladores/agency-install.py` | **Der Installations-Kern** (alle Flags, die ganze Logik) für Linux/macOS. |
+| `instaladores/instalar-windows.ps1` | Installer für **Windows** (natives PowerShell, ohne Python; nutzt dieselbe Übersetzungsdatei). |
+| `gerador/build.py` | Baut den Guide aus `dados/` neu (Wartung). |
+| `dados/` | Übersetzter Katalog + echte Situationen + `meta.json` (Single Source of Truth) + `i18n-instalador.json` (Installer-Meldungen, 5 Sprachen). |
 
-## Loslegen (5 Minuten)
+## Erste Schritte (5 Minuten)
 
-### 1. Hol dir den Leitfaden
-Klicke auf **Code → Download ZIP** (oder klone das Repository) und öffne `guia-especialistas-agencia.html` — du kannst alle 283 Spezialisten durchstöbern, ohne etwas zu installieren. Wähle deine Sprache im Auswahlfeld oben rechts.
+### 1. Den Guide holen
+Klicke auf **Code → Download ZIP** (oder klone das Repository) und öffne `guia-especialistas-agencia.html` — du kannst alle 283 Spezialisten durchstöbern, ohne etwas zu installieren. Sprache oben rechts wählen.
 
-### 2. Starte den Installer (einmal)
-Er erkennt, welche Tools du hast (Claude Code, ZCode, Codex…), **fragt deine Sprache ab**, fragt, wohin installiert werden soll und wie viele Spezialisten kommen sollen, **sichert** alles, was er anfasst, und das Maschinen-Panel des Leitfadens aktualisiert sich am Ende selbst.
+### 2. Installer einmal ausführen
+Er erkennt, welche Tools du hast (Claude Code, ZCode, Codex…), **fragt deine Sprache** (und merkt sie sich in `~/.agency-agents/config`; die System-Locale gilt als erste Voreinstellung), fragt wohin und wie viele Spezialisten, **sichert** alles, was er anfasst, und am Ende aktualisiert sich das Maschinen-Panel des Guides von selbst.
 
-**Linux/macOS:**
+**Linux/macOS** (aus dem Repository):
 ```bash
-cd instaladores
-./instalar-linux.sh
+./instaladores/instalar-linux.sh
 ```
 
 **Windows** (PowerShell — Voraussetzung: [Git for Windows](https://git-scm.com/download/win)):
 ```powershell
 cd instaladores
-Set-ExecutionPolicy -Scope Process Bypass   # if prompted
+Set-ExecutionPolicy -Scope Process Bypass   # falls nachgefragt
 .\instalar-windows.ps1
 ```
 
-### 3. Direkt im Leitfaden installieren (optional)
-Im Leitfaden fragt die Schaltfläche **„➕ Install specialists into a tool“**, *wohin* und *wen* (Pre-Launch-Team, Schulungs-Team, alle 283 oder nach Abteilung) und erzeugt eine `agency-plan.json`. Dann führe aus:
+### 3. Aus dem Guide heraus installieren (optional)
+Im Guide fragt die Schaltfläche **„➕ Spezialisten in einem Tool installieren“** *wohin* und *wen* (Pre-Launch-Team, Trainings-Team, alle 283, oder nach Abteilung) und erzeugt eine `agency-plan.json`. Dann, aus dem Ordner, in dem du den Plan gespeichert hast:
 
 ```bash
-./instalar-linux.sh --plan agency-plan.json        # Linux/macOS
-.\instalar-windows.ps1 -Plan agency-plan.json      # Windows
+./instaladores/instalar-linux.sh --plan          # Pfad ist optional: er findet agency-plan.json
+.\instalar-windows.ps1 -Plan                     # unter Windows genauso (-Plan ohne Wert)
 ```
 
-Du kannst die Sprache auch nicht-interaktiv wählen: `--lang en|pt|es|fr|de` (oder `-Lang` unter Windows).
+Der Installer sucht den Plan automatisch in `.`, `..`, im Installer-Ordner, in `~/Downloads` und `~/Documents` (der alte Name `plano-agencia.json` funktioniert auch).
+
+## Automatisierung & Feinsteuerung (dieselben Flags auf beiden Plattformen)
+
+| Linux/macOS | Windows | Was es tut |
+|---|---|---|
+| `--tool zcode,codex` | `-Tool zcode,codex` | Tools ohne Rückfrage wählen (gültige ids: `--list`) |
+| `--squad pre\|treino\|all` | `-Squad pre\|treino\|all` | Team ohne Rückfrage wählen (CI/Skripte) |
+| `--plan [DATEI]` | `-Plan [DATEI]` | Plan des Guides verwenden (Auto-Suche, wenn Pfad weggelassen) |
+| `--dry-run` | `-DryRun` | Zeigt alles, was angefasst würde — schreibt nichts |
+| `--list` | `-List` | Katalog/Tools/Teams als JSON auf stdout (niemals Netz) |
+| `--status` | `-Status` | Nur erkennen + Guide-Panel aktualisieren (ohne Netz) |
+| `--status --json` | `-Status -Json` | Maschinenstatus als JSON auf stdout (schreibt nichts) |
+| `--uninstall` | `-Uninstall` | Entfernt die Agentur-Spezialisten (Backup vorher; behält deine Dateien) |
+| `--dir <pfad>` | `-Dir <pfad>` | Installiert in einen **Projekt**-Ordner — aktiviert Cursor/Aider/Windsurf |
+| `--lang en\|pt\|es\|fr\|de` | `-Lang en\|pt\|es\|fr\|de` | Sprache (wird für künftige Läufe gemerkt) |
+
+Beispiele:
+```bash
+./instaladores/instalar-linux.sh --tool cursor --dir ~/code/mein-app --squad treino   # Cursor-Regeln im Projekt
+./instaladores/instalar-linux.sh --uninstall --tool zcode                           # entfernen (mit Backup)
+./instaladores/instalar-linux.sh --dry-run --tool claudeCode --squad pre            # nur schauen
+./instaladores/instalar-linux.sh --list | jq '.tools[].id'                          # für Skripte
+```
 
 ## Was der Installer tut (und was nicht)
 
 ✅ Erkennt installierte Tools und dein Betriebssystem
-✅ Fragt deine Sprache ab — alles folgt ihr, auch die Beschreibungen der Spezialisten
-✅ Lädt den offiziellen Katalog herunter bzw. aktualisiert ihn nach `~/.agency-agents`
-✅ Wandelt Agents mit dem **offiziellen Konverter** um (byte-identische Ausgabe)
-✅ **Sichert** nach `~/.agency-agents-backup/`, bevor irgendwas überschrieben wird
-✅ Schreibt `guia-status.js` neben den Leitfaden (er speist das Maschinen-Panel)
-❌ Installiert **keine** Tools, die du nicht hast (konfiguriert nur vorhandene/kompatible)
-❌ Sendet **nichts** ins Internet (nur der Leitfaden prüft, wenn du es verlangst, die GitHub-Releases)
+✅ Fragt deine Sprache einmal — und merkt sie sich (System-Locale ist der Standard)
+✅ Lädt/aktualisiert den offiziellen Katalog nach `~/.agency-agents`
+✅ Konvertiert die Agents mit dem **offiziellen Konverter** (byte-identisch)
+✅ **Sichert** nach `~/.agency-agents-backup/`, bevor etwas überschrieben wird
+✅ **Prüft ehrlich**: meldet, wie viele der angeforderten Spezialisten wirklich am Ziel sind
+✅ Schreibt `guia-status.js` neben den Guide (das füttert das Maschinen-Panel)
+✅ Deinstalliert sauber (`--uninstall`) — nur Agentur-Dateien, immer mit Backup
+❌ Installiert **keine** Tools, die du nicht hast (konfiguriert nur Vorhandenes/Kompatibles)
+❌ Nutzt **kein** Netz in den Modi `--status`/`--list`/`--json` (Installieren ja, um den Katalog zu holen)
+❌ Schickt **nichts** an irgendwen sonst (nur der Guide prüft auf Wunsch GitHub-Releases)
 
 ## Automatische Updates
 
-Der Leitfaden prüft (alle 24 Stunden oder wenn du auf **🔄 Check for updates** klickst) die offiziellen Releases von Katalog, App und diesem Projekt. Wenn es etwas Neues gibt, erscheint oben ein Badge.
+Der Guide prüft (alle 24h oder bei Klick auf **🔄 Jetzt nach Updates suchen**) die offiziellen Releases des Katalogs, der App und dieses Projekts. Wenn etwas Neues erscheint, zeigt ein Badge oben. Die Releases dieses Projekts folgen [CHANGELOG.md](CHANGELOG.md) — der Tag (`vX.Y.Z`) entspricht immer der Guide-Version.
 
 ## Die Spezialisten benutzen
 
-Nach der Installation erscheinen die Spezialisten in deinen Tools:
+Nach der Installation tauchen die Spezialisten in deinen Tools auf:
 
-- **Claude Code / ZCode / Codex / Gemini CLI…** — nenne den Namen in deinem Prompt: *"use the code-reviewer, um diese Änderung zu prüfen"*.
-- **In ZCode**, öffne eine Sitzung im Projektordner und schau unter **Settings → Subagents**.
-- **Cursor / Aider / Windsurf** — Installation pro *Projekt* (innerhalb des Repository-Ordners).
+- **Claude Code / ZCode / Codex / Gemini CLI…** — nenne den Namen in der Anfrage: *„nutze den code-reviewer, um diese Änderung zu reviewen“*.
+- **In ZCode**: Sitzung im Projektordner öffnen und **Settings → Subagents** ansehen.
+- **Cursor / Aider / Windsurf** — Installation *pro Projekt* mit `--dir <Projektordner>` (Regeln/Index leben im Repository).
 
-Der Leitfaden selbst enthält das komplette Playbook: wie man sie aufruft, Beispiele und die fünf goldenen Regeln.
+Der Guide selbst enthält das komplette Playbook: Aufruf, Beispiele und die fünf goldenen Regeln.
 
 ## Unterstützte Tools
 
-| Tool | Umfang | Ziel |
+| Tool | Geltungsbereich | Ziel |
 |---|---|---|
 | Claude Code | Benutzer | `~/.claude/agents/*.md` |
 | ZCode | Benutzer | `~/.zcode/agents/*.md` |
@@ -90,16 +135,25 @@ Der Leitfaden selbst enthält das komplette Playbook: wie man sie aufruft, Beisp
 | Antigravity | Benutzer | `~/.gemini/config/skills/<slug>/SKILL.md` |
 | Osaurus | Benutzer | `~/.osaurus/skills/…` (nur macOS) |
 | Kimi CLI | Benutzer | `~/.config/kimi/agents/<slug>/` (Windows: WSL) |
-| Cursor / Aider / Windsurf | pro Projekt | innerhalb des Repository-Ordners |
+| Cursor | pro Projekt (`--dir`) | `<projekt>/.cursor/rules/<slug>.mdc` |
+| Aider | pro Projekt (`--dir`) | `<projekt>/CONVENTIONS.md` (Index) |
+| Windsurf | pro Projekt (`--dir`) | `<projekt>/.windsurfrules` (Index) |
 
-Andere Katalog-Integrationen (Mistral Vibe, DeepSeek Harness, OpenClaw…) funktionieren über den offiziellen Konverter; dafür nutze besser die [Agency Agents App](https://github.com/msitarzewski/agency-agents-app/releases).
+Weitere Katalog-Integrationen (Mistral Vibe, DeepSeek Harness, OpenClaw…) laufen über den offiziellen Konverter; dafür bevorzuge die [Agency Agents App](https://github.com/msitarzewski/agency-agents-app/releases).
 
 ## Sprachen
 
-Der Leitfaden und beide Installer gibt es auf **Englisch, Portugiesisch, Spanisch, Französisch und Deutsch** — inklusive aller Spezialisten-Beschreibungen und aller Praxis-Situationen aus dem echten Leben. Wähle die Sprache bei der Installation oder wechsle jederzeit im Leitfaden (Auswahl oben rechts).
+Guide und beide Installer gibt es in **Englisch, Portugiesisch, Spanisch, Französisch und Deutsch** — inklusive aller Spezialisten-Beschreibungen und echten Einsatzsituationen. Sprache bei der Installation wählen (wird gemerkt) oder jederzeit im Guide wechseln (Selektor oben).
+
+## Entwicklung
+
+- `python3 gerador/build.py` baut den Guide aus `dados/` neu — die CI schlägt fehl, wenn das committete HTML nicht zu den Daten passt.
+- `python3 tests/test_guide.py` — statische Guide-Tests (Payload, i18n-Parität, XSS).
+- `bash tests/run-tests.sh` — adversarial-Installer-Suite (dynamische Katalog-Zählungen, alle Flags).
+- Die CI führt alles bei jedem Push/PR aus (siehe [.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 ## Lizenzen & Credits
 
 - Dieses Projekt: **MIT** (siehe `LICENSE`).
-- Katalog und Konverter: [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) — MIT, von Michael Sitarzewski. Dieses Projekt verpackt, übersetzt und vereinfacht ihn nur für Einsteiger.
-- Beschreibungen und Nutzungssituationen wurden übersetzt/angepasst; der englische Originaltext steht in den Details jeder Karte.
+- Katalog und Konverter: [msitarzewski/agency-agents](https://github.com/msitarzewski/agency-agents) — MIT, von Michael Sitarzewski. Dieses Projekt verpackt, übersetzt und vereinfacht es nur für Einsteiger.
+- Beschreibungen und Einsatzsituationen wurden übersetzt/angepasst; der englische Originaltext steht in den Details jeder Karte.

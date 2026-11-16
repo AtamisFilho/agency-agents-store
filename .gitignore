@@ -1,5 +1,7 @@
 # gerado localmente pelo instalador (estado da sua máquina)
 guia-status.js
+# planos do wizard (guia salva como agency-plan.json; plano-agencia.json é o nome legado)
+agency-plan.json
 plano-agencia.json
 *.log
 .DS_Store

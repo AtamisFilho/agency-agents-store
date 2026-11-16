@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # ============================================================================
-# run-tests.sh — suíte adversarial do instalador Linux/macOS
-# Exercita branches REJECTED: planos maliciosos, idiomas inválidos, TTY
-# ausente, ferramentas incompatíveis, HOME com espaço, backup, modo pasta.
+# run-tests.sh — suíte adversarial do instalador (Linux/macOS)
+# Exercita branches REJECTED (planos maliciosos, idiomas inválidos, TTY
+# ausente, ferramentas incompatíveis, HOME com espaço, backup, modo pasta)
+# e as flags novas (--tool/--squad/--dry-run/--list/--uninstall/--dir/--json,
+# autodetecção de plano, persistência de idioma, --status sem rede).
+#
+# Contagens de catálogo são DINÂMICAS (regra oficial: divisions.json +
+# frontmatter "---"), então a suíte não quebra quando o catálogo upstream cresce.
 # ============================================================================
 set -u
+export LC_ALL=C.UTF-8 LANG=C.UTF-8   # mensagens determinísticas em inglês
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(dirname "$HERE")"
 INSTALLER="$REPO/instaladores/instalar-linux.sh"
+DRIVER="$REPO/instaladores/agency-install.py"
 TESTCAT="/tmp/aa-test-catalog-$$"
 PASS=0; FAIL=0; FAILED_NAMES=()
 
@@ -31,34 +38,65 @@ new_home() { # new_home <dir> — HOME isolado com catálogo via hardlinks
   rm -rf "$d"; mkdir -p "$d"
   cp -al "$TESTCAT" "$d/.agency-agents" 2>/dev/null || cp -r "$TESTCAT" "$d/.agency-agents"
 }
-clean_repo_side_effects() { rm -f "$REPO/guia-status.js"; }
+spec_count() { # spec_count <catálogo> — contagem OFICIAL (divisions.json + frontmatter), independente do instalador
+  python3 - "$1" <<'SPEC'
+import re, sys, pathlib
+cat = pathlib.Path(sys.argv[1])
+divs = []
+text = (cat / "divisions.json").read_text(encoding="utf-8", errors="replace")
+m = re.search(r'"divisions"\s*:\s*\{', text)
+if m:
+    divs = re.findall(r'"([a-z0-9-]+)"\s*:\s*\{', text[m.end():])
+if not divs:
+    divs = [p.name for p in cat.iterdir() if p.is_dir() and p.name not in {"scripts","integrations","examples",".git",".github","i18n"}]
+if "strategy" not in divs:
+    divs.append("strategy")
+n = 0
+for d in divs:
+    dd = cat / d
+    if not dd.is_dir():
+        continue
+    for p in dd.rglob("*.md"):
+        try:
+            if p.open(encoding="utf-8", errors="replace").readline().strip() == "---":
+                n += 1
+        except OSError:
+            pass
+print(n)
+SPEC
+}
+clean_repo_side_effects() { rm -f "$REPO/guia-status.js" "$REPO/agency-plan.json"; }
 
 # ---------- catálogo compartilhado (clone único, hardlinks nos testes) ----------
 rm -rf "$TESTCAT"
 git clone --depth 1 -q https://github.com/msitarzewski/agency-agents.git "$TESTCAT" || { echo "FATAL: clone catálogo"; exit 1; }
 clean_repo_side_effects
+N_AGENTS="$(spec_count "$TESTCAT")"
+echo "== catálogo de teste: $N_AGENTS agentes (contagem dinâmica) =="
 
 # ---------- 1. sintaxe ----------
 t "bash -n no instalador" ok bash -n "$INSTALLER"
+t "bash -n no bootstrap" ok bash -n "$REPO/instaladores/instalar.sh"
 t "py_compile no build.py" ok python3 -m py_compile "$REPO/gerador/build.py"
+t "py_compile no driver" ok python3 -m py_compile "$DRIVER"
 
 # ---------- 2. idioma inválido → rejected ----------
 TH=/tmp/aa-h-lang; new_home "$TH"
-out=$(HOME="$TH" bash "$INSTALLER" --lang xx --status 2>&1) || true
+out=$(HOME="$TH" bash "$INSTALLER" --lang xx --status </dev/null 2>&1) || true
 if echo "$out" | grep -qi "invalid language\|idioma inválido\|Ungültige\|Langue invalide"; then PASS=$((PASS+1)); echo "PASS --lang inválido mostra erro"; else FAIL=$((FAIL+1)); FAILED_NAMES+=("--lang msg"); echo "FAIL --lang msg"; echo "$out" | head -3 | sed 's/^/    /'; fi
 rm -rf "$TH"
 
 # ---------- 3. plano inexistente → rejected ----------
 TH=/tmp/aa-h-plan404; new_home "$TH"
-HOME="$TH" bash "$INSTALLER" --plan /tmp/aa-inexistente-$$ --status >/tmp/aa-out-plan404 2>&1
+HOME="$TH" bash "$INSTALLER" --plan /tmp/aa-inexistente-$$ --status </dev/null >/tmp/aa-out-plan404 2>&1
 assert_out "--plan inexistente → err" "not found\|não encontrado\|no encontrado\|introuvable\|nicht gefunden" /tmp/aa-out-plan404
 rm -rf "$TH"
 
 # ---------- 4. plano JSON inválido → rejected ----------
 TH=/tmp/aa-h-badplan; new_home "$TH"
 echo "{isto não é json" > /tmp/aa-badplan.json
-HOME="$TH" bash "$INSTALLER" --plan /tmp/aa-badplan.json --status >/tmp/aa-out-badplan 2>&1
-assert_out "plano JSON inválido → err" "Invalid plan\|inválido\|inválido\|invalide\|Ungültige" /tmp/aa-out-badplan
+HOME="$TH" bash "$INSTALLER" --plan /tmp/aa-badplan.json --status </dev/null >/tmp/aa-out-badplan 2>&1
+assert_out "plano JSON inválido → err" "Invalid plan\|inválido\|invalide\|Ungültige" /tmp/aa-out-badplan
 rm -rf "$TH"
 
 # ---------- 5. plano com path traversal → rejected ----------
@@ -66,7 +104,7 @@ TH=/tmp/aa-h-trav; new_home "$TH"
 cat > /tmp/aa-trav.json <<'EOF'
 {"ferramentas":["claudeCode"],"agentes":[{"slug":"x","file":"../../../../etc/passwd"}]}
 EOF
-HOME="$TH" bash "$INSTALLER" --plan /tmp/aa-trav.json --status >/tmp/aa-out-trav 2>&1
+HOME="$TH" bash "$INSTALLER" --plan /tmp/aa-trav.json --status </dev/null >/tmp/aa-out-trav 2>&1
 assert_out "path traversal no plano → recusado" "Invalid plan\|inválido\|Ungültige\|invalide" /tmp/aa-out-trav
 [[ -f "$TH/claude/agents/passwd" || -f "$TH/.claude/agents/passwd" ]] && { FAIL=$((FAIL+1)); echo "FAIL traversal ESCAPOU"; } || { PASS=$((PASS+1)); echo "PASS traversal não escapou"; }
 rm -rf "$TH"
@@ -75,17 +113,17 @@ rm -rf "$TH"
 TH=/tmp/aa-h-notty; new_home "$TH"
 timeout 10 env HOME="$TH" bash "$INSTALLER" </dev/null >/tmp/aa-out-notty 2>&1
 rc=$?
-if [[ $rc -ne 0 ]] && grep -qi "terminal\|--plan" /tmp/aa-out-notty; then PASS=$((PASS+1)); echo "PASS sem TTY → erro orientado (rc=$rc)"
+if [[ $rc -ne 0 && $rc -ne 124 ]] && grep -qi "terminal\|--plan" /tmp/aa-out-notty; then PASS=$((PASS+1)); echo "PASS sem TTY → erro orientado (rc=$rc)"
 elif [[ $rc -eq 124 ]]; then FAIL=$((FAIL+1)); FAILED_NAMES+=("notty-travou"); echo "FAIL sem TTY TRAVOU (timeout)"
 else PASS=$((PASS+1)); echo "PASS sem TTY termina sem travar (rc=$rc)"; fi
 rm -rf "$TH"
 
-# ---------- 7. instalação real: squad treino em zcode (plano válido) ----------
+# ---------- 7. instalação real: plano em zcode (HOME com espaço) ----------
 TH="/tmp/aa h space"; new_home "$TH"   # HOME com ESPAÇO no nome
 cat > "$TH/plan.json" <<'EOF'
 {"ferramentas":["zcode"],"agentes":[{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"},{"slug":"reality-checker","file":"testing/testing-reality-checker.md"}]}
 EOF
-HOME="$TH" bash "$INSTALLER" --lang pt --plan "$TH/plan.json" >/tmp/aa-out-real 2>&1
+HOME="$TH" bash "$INSTALLER" --lang pt --plan "$TH/plan.json" </dev/null >/tmp/aa-out-real 2>&1
 assert_out "instalação com HOME contendo espaço (msg pt)" "Especialistas instalados em ZCode" /tmp/aa-out-real
 [[ -f "$TH/.zcode/agents/code-reviewer.md" ]] && { PASS=$((PASS+1)); echo "PASS destino .zcode/agents com espaço OK"; } || { FAIL=$((FAIL+1)); FAILED_NAMES+=("zcode-space"); echo "FAIL destino zcode"; }
 [[ -f "$TH/.zcode/agents/reality-checker.md" ]] && { PASS=$((PASS+1)); echo "PASS 2º agente OK"; } || { FAIL=$((FAIL+1)); echo "FAIL 2º agente"; }
@@ -96,41 +134,37 @@ n_inst=$(ls "$TH/.zcode/agents/" 2>/dev/null | wc -l)
 [[ -f "$REPO/guia-status.js" ]] && grep -q '"lang": "pt"\|"lang":"pt"' "$REPO/guia-status.js" && { PASS=$((PASS+1)); echo "PASS status.lang propagado"; } || { FAIL=$((FAIL+1)); echo "FAIL status.lang"; }
 # backup na 2ª rodada com conteúdo alterado
 echo "modificado" >> "$TH/.zcode/agents/code-reviewer.md"
-HOME="$TH" bash "$INSTALLER" --lang pt --plan "$TH/plan.json" >/dev/null 2>&1
+HOME="$TH" bash "$INSTALLER" --lang pt --plan "$TH/plan.json" </dev/null >/dev/null 2>&1
 n_backup=$(find "$TH/.agency-agents-backup" -name "*.md" 2>/dev/null | wc -l)
 [[ "$n_backup" -ge 1 ]] && { PASS=$((PASS+1)); echo "PASS backup criado na 2ª instalação ($n_backup arq.)"; } || { FAIL=$((FAIL+1)); echo "FAIL backup ausente"; }
 # conteúdo restaurado (a 2ª instalação sobrescreve com o original)
 grep -q "modificado" "$TH/.zcode/agents/code-reviewer.md" && { FAIL=$((FAIL+1)); echo "FAIL sobrescrita não restaurou"; } || { PASS=$((PASS+1)); echo "PASS sobrescrita restaurou o original"; }
 rm -rf "$TH"; clean_repo_side_effects
 
-# ---------- 8. identity "all" inclui subpastas de divisões ----------
+# ---------- 8. identity "all" instala o catálogo INTEIRO (contagem dinâmica) ----------
 TH=/tmp/aa-h-all; new_home "$TH"
 cat > "$TH/plan-all.json" <<'EOF'
 {"ferramentas":["claudeCode"],"agentes":[]}
 EOF
-# truque: "all" usa o caminho próprio; usamos ferramenta claudeCode + all via env do SLUGS_FILE? não exposto.
-# alternativa: validar direto o find que o instalador usa
-n_catalog=$(find "$TH/.agency-agents" -type f -name "*.md" \
-  \( -path "*/academic/*" -o -path "*/design/*" -o -path "*/engineering/*" -o -path "*/finance/*" \
-     -o -path "*/game-development/*" -o -path "*/gis/*" -o -path "*/healthcare/*" -o -path "*/marketing/*" \
-     -o -path "*/paid-media/*" -o -path "*/product/*" -o -path "*/project-management/*" -o -path "*/research/*" \
-     -o -path "*/sales/*" -o -path "*/security/*" -o -path "*/spatial-computing/*" -o -path "*/specialized/*" \
-     -o -path "*/support/*" -o -path "*/testing/*" \) \
-  ! -iname "readme*" ! -iname "contributing*" ! -iname "*worklog*" | wc -l)
-[[ "$n_catalog" -eq 283 ]] && { PASS=$((PASS+1)); echo "PASS find all = 283 (inclui subpastas godot/unity/unreal/roblox)"; } || { FAIL=$((FAIL+1)); FAILED_NAMES+=("all-283"); echo "FAIL find all = $n_catalog (esperado 283)"; }
-rm -rf "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-all.json" </dev/null >/tmp/aa-out-all 2>&1
+n_dest=$(find "$TH/.claude/agents" -type f -name "*.md" 2>/dev/null | wc -l)
+if [[ "$n_dest" == "$N_AGENTS" ]]; then
+  PASS=$((PASS+1)); echo "PASS identity all = $n_dest (= catálogo dinâmico, inclui subpastas e divisões novas)"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("all-dynamic"); echo "FAIL identity all = $n_dest (esperado $N_AGENTS)"; head -5 /tmp/aa-out-all | sed 's/^/    /'
+fi
+rm -rf "$TH"; clean_repo_side_effects
 
 # ---------- 9. modo pasta (antigravity) → SKILL.md no destino ----------
 TH=/tmp/aa-h-agv; new_home "$TH"
 cat > "$TH/plan-agv.json" <<'EOF'
 {"ferramentas":["antigravity"],"agentes":[]}
 EOF
-HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-agv.json" >/tmp/aa-out-agv 2>&1
-# antigravity render → pasta por slug com SKILL.md; usa convert (pode falhar se convert não suportar) — valida contagem > 0 OU aviso honesto
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-agv.json" </dev/null >/tmp/aa-out-agv 2>&1
 if grep -q "Specialists installed in Antigravity" /tmp/aa-out-agv; then
   n=$(find "$TH/.gemini/config/skills" -name "SKILL.md" 2>/dev/null | wc -l)
   [[ "$n" -ge 1 ]] && { PASS=$((PASS+1)); echo "PASS antigravity modo pasta: $n SKILL.md"; } || { FAIL=$((FAIL+1)); echo "FAIL antigravity: ✓ mas 0 SKILL.md"; }
-elif grep -q "render antigravity" /tmp/aa-out-agv || grep -qi "warn" /tmp/aa-out-agv; then
+elif grep -q "render antigravity" /tmp/aa-out-agv || grep -qi "\[!!\]" /tmp/aa-out-agv; then
   PASS=$((PASS+1)); echo "PASS antigravity: falha reportada com aviso honesto (não ✓ falso)"
 else
   FAIL=$((FAIL+1)); FAILED_NAMES+=("antigravity-silent"); echo "FAIL antigravity: resultado silencioso"; head -5 /tmp/aa-out-agv
@@ -142,7 +176,7 @@ TH=/tmp/aa-h-unsup; new_home "$TH"
 cat > "$TH/plan-unsup.json" <<'EOF'
 {"ferramentas":["hermes"],"agentes":[]}
 EOF
-HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-unsup.json" >/tmp/aa-out-unsup 2>&1
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-unsup.json" </dev/null >/tmp/aa-out-unsup 2>&1
 rc=$?
 if [[ $rc -eq 0 ]] && grep -qi "not supported" /tmp/aa-out-unsup; then PASS=$((PASS+1)); echo "PASS hermes → aviso unsupported, rc=0"
 else FAIL=$((FAIL+1)); echo "FAIL hermes (rc=$rc)"; fi
@@ -153,8 +187,7 @@ TH=/tmp/aa-h-incomp; new_home "$TH"
 cat > "$TH/plan-osaurus.json" <<'EOF'
 {"ferramentas":["osaurus"],"agentes":[]}
 EOF
-HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-osaurus.json" >/tmp/aa-out-osaurus 2>&1
-# osaurus é macOS-only: no linux deve recusar com aviso (após fix) — teste documenta o comportamento esperado
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-osaurus.json" </dev/null >/tmp/aa-out-osaurus 2>&1
 if grep -qi "not available for\|incompat\|macOS only\|not supported" /tmp/aa-out-osaurus; then
   PASS=$((PASS+1)); echo "PASS osaurus no Linux recusado com aviso"
 else
@@ -167,7 +200,7 @@ TH=/tmp/aa-h-noslug; new_home "$TH"
 cat > "$TH/plan-noslug.json" <<'EOF'
 {"ferramentas":["zcode"],"agentes":[{"file":"engineering/engineering-code-reviewer.md"}]}
 EOF
-HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-noslug.json" >/tmp/aa-out-noslug 2>&1
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-noslug.json" </dev/null >/tmp/aa-out-noslug 2>&1
 rc=$?
 if [[ $rc -ne 0 ]] && grep -qi "Invalid plan\|inválido\|invalide\|Ungültige" /tmp/aa-out-noslug; then
   PASS=$((PASS+1)); echo "PASS plano sem slug → rejected na validação"
@@ -180,11 +213,11 @@ rm -rf "$TH"
 # ---------- 13. diretório do guia sem permissão de escrita → aviso honesto, não crash ----------
 ROG="/tmp/aa-rog-$$"; TH=/tmp/aa-h-ro
 rm -rf "$ROG" "$TH"; mkdir -p "$ROG/instaladores"
-cp "$INSTALLER" "$ROG/instaladores/"
+cp "$INSTALLER" "$DRIVER" "$ROG/instaladores/"   # instalador + driver (layout do repo)
 echo "<html>guia fake</html>" > "$ROG/guia-especialistas-agencia.html"
 chmod 555 "$ROG"
 new_home "$TH"
-HOME="$TH" bash "$ROG/instaladores/instalar-linux.sh" --lang en --status >/tmp/aa-out-ro 2>&1
+HOME="$TH" bash "$ROG/instaladores/instalar-linux.sh" --lang en --status </dev/null >/tmp/aa-out-ro 2>&1
 rc=$?
 chmod 755 "$ROG"   # permite a limpeza
 if [[ $rc -eq 0 ]] && grep -q "Done!" /tmp/aa-out-ro && ! grep -q "Guide panel updated" /tmp/aa-out-ro; then
@@ -194,23 +227,148 @@ else
 fi
 rm -rf "$ROG" "$TH"; clean_repo_side_effects
 
-# ---------- 14. agentes vazio = instalar TODOS (semântica única nas duas famílias) ----------
+# ---------- 14. agentes vazio = TODOS (contagem dinâmica; render zcode) ----------
 TH=/tmp/aa-h-empty; new_home "$TH"
 cat > "$TH/plan-empty.json" <<'EOF'
 {"ferramentas":["zcode"],"agentes":[]}
 EOF
-HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-empty.json" >/tmp/aa-out-empty 2>&1
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan-empty.json" </dev/null >/tmp/aa-out-empty 2>&1
 rc=$?
 n=$(find "$TH/.zcode/agents" -type f -name "*.md" 2>/dev/null | wc -l)
-if [[ $rc -eq 0 && "$n" -eq 283 ]]; then
-  PASS=$((PASS+1)); echo "PASS agentes vazio = todos (283 no destino)"
+if [[ $rc -eq 0 && "$n" == "$N_AGENTS" ]]; then
+  PASS=$((PASS+1)); echo "PASS agentes vazio = todos ($n no destino, dinâmico)"
 else
-  FAIL=$((FAIL+1)); FAILED_NAMES+=("empty=all"); echo "FAIL agentes vazio: $n instalados, rc=$rc (esperado 283)"; head -5 /tmp/aa-out-empty
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("empty=all"); echo "FAIL agentes vazio: $n instalados, rc=$rc (esperado $N_AGENTS)"; head -5 /tmp/aa-out-empty
 fi
 rm -rf "$TH"; clean_repo_side_effects
 
+# ---------- 15. --status NÃO usa rede (não clona o catálogo) ----------
+TH=/tmp/aa-h-nostatusclone; rm -rf "$TH"; mkdir -p "$TH"   # HOME SEM catálogo
+HOME="$TH" bash "$INSTALLER" --lang en --status </dev/null >/tmp/aa-out-noclone 2>&1
+rc=$?
+if [[ $rc -eq 0 && ! -e "$TH/.agency-agents/.git" ]] && grep -qi "atalog not found\|nada foi baixado" /tmp/aa-out-noclone; then
+  PASS=$((PASS+1)); echo "PASS --status sem catálogo: não clona, avisa, rc=0"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("status-no-net"); echo "FAIL --status clonou ou não avisou (rc=$rc)"; head -5 /tmp/aa-out-noclone | sed 's/^/    /'
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 16. --tool/--squad não-interativo (CI/scripts) ----------
+TH=/tmp/aa-h-nonint; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --tool zcode --squad treino </dev/null >/tmp/aa-out-nonint 2>&1
+rc=$?
+n=$(ls "$TH/.zcode/agents/" 2>/dev/null | wc -l)
+if [[ $rc -eq 0 && "$n" == "4" ]] && grep -q "Specialists installed in ZCode ✓ (4" /tmp/aa-out-nonint; then
+  PASS=$((PASS+1)); echo "PASS --tool zcode --squad treino → exatamente 4, sem perguntas"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("tool-squad"); echo "FAIL --tool/--squad: n=$n rc=$rc"; head -5 /tmp/aa-out-nonint | sed 's/^/    /'
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 17. --dry-run não escreve NADA ----------
+TH=/tmp/aa-h-dry; new_home "$TH"
+HOME="$TH" bash "$INSTALLER" --lang en --dry-run --tool claudeCode --squad treino </dev/null >/tmp/aa-out-dry 2>&1
+rc=$?
+if [[ $rc -eq 0 ]] && grep -qi "DRY-RUN" /tmp/aa-out-dry \
+   && [[ ! -e "$TH/.claude" ]] && [[ ! -e "$TH/.agency-agents-backup" ]]; then
+  PASS=$((PASS+1)); echo "PASS --dry-run: pré-visualiza e não toca em nada"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("dry-run"); echo "FAIL --dry-run escreveu algo (rc=$rc)"; head -5 /tmp/aa-out-dry | sed 's/^/    /'
+fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 18. --list imprime JSON válido (sem rede) ----------
+TH=/tmp/aa-h-list; rm -rf "$TH"; mkdir -p "$TH"
+if HOME="$TH" bash "$INSTALLER" --list </dev/null 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert len(d["tools"]) >= 13, "tools insuficientes"
+assert any(t["id"] == "cursor" and t["projectOnly"] for t in d["tools"]), "cursor projectOnly"
+assert d["squads"] and len(d["squads"]["treino"]["slugs"]) == 4, "squads"
+assert d["catalog"] is None, "sem catálogo deve ser null"' 2>/tmp/aa-list-err; then
+  PASS=$((PASS+1)); echo "PASS --list: JSON válido (13 tools, squads, projectOnly)"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("list-json"); echo "FAIL --list"; cat /tmp/aa-list-err | head -3
+fi
+rm -rf "$TH"
+
+# ---------- 19. --uninstall remove só a agência (backup + arquivo próprio preservado) ----------
+TH=/tmp/aa-h-uninstall; new_home "$TH"
+cat > "$TH/plan2.json" <<'EOF'
+{"ferramentas":["zcode"],"agentes":[{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"},{"slug":"reality-checker","file":"testing/testing-reality-checker.md"}]}
+EOF
+HOME="$TH" bash "$INSTALLER" --lang en --plan "$TH/plan2.json" </dev/null >/dev/null 2>&1
+echo "# meu agente próprio, não mexe" > "$TH/.zcode/agents/my-own-agent.md"
+HOME="$TH" bash "$INSTALLER" --lang en --uninstall --tool zcode </dev/null >/tmp/aa-out-unin 2>&1
+rc=$?
+if [[ $rc -eq 0 ]] && [[ ! -e "$TH/.zcode/agents/code-reviewer.md" ]] && [[ -f "$TH/.zcode/agents/my-own-agent.md" ]] \
+   && find "$TH/.agency-agents-backup" -type d -name "uninstall-*" | grep -q . ; then
+  PASS=$((PASS+1)); echo "PASS --uninstall: removeu 2, preservou arquivo próprio, com backup"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("uninstall"); echo "FAIL --uninstall (rc=$rc)"; head -5 /tmp/aa-out-unin | sed 's/^/    /'
+fi
+rm -rf "$TH"
+
+# ---------- 20. --dir instala por projeto (Cursor → .cursor/rules/*.mdc) ----------
+TH=/tmp/aa-h-dir; new_home "$TH"; mkdir -p "$TH/meu-projeto"
+HOME="$TH" bash "$INSTALLER" --lang en --tool cursor --dir "$TH/meu-projeto" --squad treino </dev/null >/tmp/aa-out-dir 2>&1
+rc=$?
+n=$(find "$TH/meu-projeto/.cursor/rules" -name "*.mdc" 2>/dev/null | wc -l)
+if [[ $rc -eq 0 && "$n" == "4" && -f "$TH/meu-projeto/.cursor/rules/api-tester.mdc" ]]; then
+  PASS=$((PASS+1)); echo "PASS --dir: 4 .mdc do Cursor dentro do projeto"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("dir-cursor"); echo "FAIL --dir cursor: n=$n rc=$rc"; head -5 /tmp/aa-out-dir | sed 's/^/    /'
+fi
+rm -rf "$TH"
+
+# ---------- 21. --plan sem valor → busca automática (plano na raiz, rodando de instaladores/) ----------
+ROG="/tmp/aa-autodet-$$"; TH=/tmp/aa-h-autodet
+rm -rf "$ROG" "$TH"; mkdir -p "$ROG/instaladores"
+cp "$INSTALLER" "$DRIVER" "$ROG/instaladores/"
+cat > "$ROG/agency-plan.json" <<'EOF'
+{"ferramentas":["zcode"],"agentes":[{"slug":"code-reviewer","file":"engineering/engineering-code-reviewer.md"},{"slug":"reality-checker","file":"testing/testing-reality-checker.md"}]}
+EOF
+new_home "$TH"
+( cd "$ROG/instaladores" && HOME="$TH" bash ./instalar-linux.sh --plan </dev/null ) >/tmp/aa-out-autodet 2>&1
+rc=$?
+n=$(ls "$TH/.zcode/agents/" 2>/dev/null | wc -l)
+if [[ $rc -eq 0 && "$n" == "2" ]] && grep -qi "automatically\|automaticamente" /tmp/aa-out-autodet; then
+  PASS=$((PASS+1)); echo "PASS --plan sem valor: achou o plano um diretório acima e instalou 2"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("plan-autodetect"); echo "FAIL autodetecção: n=$n rc=$rc"; head -5 /tmp/aa-out-autodet | sed 's/^/    /'
+fi
+rm -rf "$ROG" "$TH"
+
+# ---------- 22. idioma persistido em ~/.agency-agents/config + locale ignorado com config ----------
+TH=/tmp/aa-h-langsave; rm -rf "$TH"; mkdir -p "$TH"
+HOME="$TH" bash "$INSTALLER" --lang pt --status </dev/null >/dev/null 2>&1
+if grep -q "^lang=pt$" "$TH/.agency-agents/config" 2>/dev/null; then
+  PASS=$((PASS+1)); echo "PASS --lang pt persistido em ~/.agency-agents/config"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("lang-persist"); echo "FAIL config de idioma não salvo"; fi
+rm -rf "$TH"; clean_repo_side_effects
+
+# ---------- 23. --status --json: JSON puro no stdout, nenhum arquivo escrito ----------
+ROG="/tmp/aa-json-$$"; TH=/tmp/aa-h-json
+rm -rf "$ROG" "$TH"; mkdir -p "$ROG/instaladores"
+cp "$INSTALLER" "$DRIVER" "$ROG/instaladores/"
+echo "<html>guia fake</html>" > "$ROG/guia-especialistas-agencia.html"
+rm -rf "$TH"; mkdir -p "$TH"   # sem catálogo: catalog=null no JSON
+if ( cd "$ROG" && HOME="$TH" bash instaladores/instalar-linux.sh --status --json </dev/null 2>/dev/null ) >/tmp/aa-out-json 2>/dev/null \
+   && python3 -c '
+import json
+d = json.load(open("/tmp/aa-out-json"))
+assert d["lang"] == "en" and isinstance(d["tools"], list) and len(d["tools"]) >= 13
+assert d["catalog"] is None, "sem catálogo deve ser null"' 2>/tmp/aa-json-err \
+   && [[ ! -e "$ROG/guia-status.js" ]]; then
+  PASS=$((PASS+1)); echo "PASS --status --json: stdout JSON válido, nada escrito"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("status-json"); echo "FAIL --status --json"; head -3 /tmp/aa-out-json 2>/dev/null; cat /tmp/aa-json-err 2>/dev/null | head -2
+fi
+rm -rf "$ROG" "$TH"
+
 # ---------- limpeza ----------
-rm -rf "$TESTCAT" /tmp/aa-out-* /tmp/aa-badplan.json /tmp/aa-trav.json /tmp/aa-h-* 2>/dev/null || true
+rm -rf "$TESTCAT" /tmp/aa-out-* /tmp/aa-badplan.json /tmp/aa-trav.json /tmp/aa-h-* /tmp/aa-list-err /tmp/aa-json-err 2>/dev/null || true
 clean_repo_side_effects
 
 echo

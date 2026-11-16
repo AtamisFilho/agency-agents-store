@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax (bash -n)
+        run: |
+          bash -n instaladores/instalar-linux.sh
+          bash -n instaladores/instalar.sh
+          bash -n tests/run-tests.sh
+
+      - name: PowerShell syntax (Parser)
+        shell: pwsh
+        run: |
+          foreach ($f in @("instaladores/instalar-windows.ps1", "instaladores/instalar.ps1")) {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs)
+            if ($errs.Count) { $errs | ForEach-Object { Write-Error $_.Message }; exit 1 }
+            Write-Host "OK $f"
+          }
+
+      - name: Python syntax (py_compile)
+        run: python3 -m py_compile gerador/build.py instaladores/agency-install.py tests/test_guide.py
+
+      - name: JSON data files are valid
+        run: python3 -c "import json,glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('dados/**/*.json', recursive=True)]; print('JSON ok')"
+
+      - name: Guide tests (static — payload, i18n parity, XSS)
+        run: python3 tests/test_guide.py
+
+      - name: Guide is up to date with dados/
+        run: |
+          python3 gerador/build.py
+          if ! git diff --exit-code -- guia-especialistas-agencia.html; then
+            echo "::error::guia-especialistas-agencia.html está desatualizado — rode 'python3 gerador/build.py' e commite"
+            exit 1
+          fi
+
+      - name: Installer suite (adversarial — uses network to clone the catalog)
+        run: bash tests/run-tests.sh

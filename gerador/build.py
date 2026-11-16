@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Gera o guia-especialistas-agencia.html (v2.1.0) — self-contained, offline, 5 idiomas.
+"""Gera o guia-especialistas-agencia.html — self-contained, offline, 5 idiomas.
 
 Dados: dados/agents.json + pt*.json + ex*.json (PT fonte) + tr/{en,es,fr,de}/*.json + when.json.
+Fonte única de metadados (versão, divisões, tags, contagens): dados/meta.json —
+nada de listas/contagens hard-coded aqui; o build valida declarativamente.
 Saída: guia-especialistas-agencia.html na raiz do repo (e ~/Documentos se existir).
 """
 import json, re, sys
@@ -9,22 +11,31 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DADOS = REPO / "dados"
-GUIA_VERSION = "2.1.1"
-OUR_REPO = "AtamisFilho/agency-agents-store"
+meta = json.load(open(DADOS / "meta.json"))
+GUIA_VERSION = meta["version"]
+OUR_REPO = meta["ourRepo"]
 
 agents = json.load(open(DADOS / "agents.json"))
+squads_data = json.load(open(DADOS / "squads.json"))
 i18n = json.load(open(DADOS / "i18n.json"))  # {en,pt,es,fr,de} -> {agents:{slug:{d,x[4]}}, when:{div,custom}}
 when_pt = i18n["pt"]["when"]
 
-INSTALLED_CLAUDE = {
-    "engineering/engineering-code-reviewer.md", "engineering/engineering-devops-automator.md",
-    "testing/testing-reality-checker.md", "testing/testing-api-tester.md",
-    "testing/testing-test-automation-engineer.md", "testing/testing-evidence-collector.md",
-    "testing/testing-accessibility-auditor.md", "testing/testing-performance-benchmarker.md",
-    "security/security-penetration-tester.md", "security/security-appsec-engineer.md",
-    "security/security-threat-detection-engineer.md", "product/product-sprint-prioritizer.md",
-}
-ZCODE_SLUGS = {"code-reviewer", "reality-checker", "api-tester", "sprint-prioritizer"}
+INSTALLED_CLAUDE = set(meta["tags"]["claudeFiles"])
+ZCODE_SLUGS = set(meta["tags"]["zcodeSlugs"])
+
+# ---------- validação declarativa (falha cedo se dados e meta divergirem) ----------
+_agent_divisions = {a["division"] for a in agents}
+_meta_divisions = set(meta["divisions"])
+assert _agent_divisions == _meta_divisions, (
+    f"meta.json desalinhado com agents.json — divisões só em um lado: "
+    f"{_meta_divisions ^ _agent_divisions}. Atualize dados/meta.json (e traduções) quando o catálogo mudar.")
+_agent_slugs = {a["slug"] for a in agents}
+_agent_files = {a["file"] for a in agents}
+for _sq, _sd in squads_data.items():
+    _sq_slugs = {x["slug"] for x in _sd["agentes"]}
+    assert _sq_slugs <= _agent_slugs, f"squad {_sq} tem slugs fora do catálogo: {_sq_slugs - _agent_slugs}"
+assert INSTALLED_CLAUDE <= _agent_files, f"tags.claudeFiles fora do catálogo: {INSTALLED_CLAUDE - _agent_files}"
+assert ZCODE_SLUGS <= _agent_slugs, f"tags.zcodeSlugs fora do catálogo: {ZCODE_SLUGS - _agent_slugs}"
 
 DIV_PT = {
     "academic": "Acadêmico & Narrativa", "design": "Design & UX", "engineering": "Engenharia",
@@ -475,10 +486,11 @@ for raw in sorted(DIV_I18N["en"].keys()):
     inst = sum(1 for a in agents if a["division"] == raw and (a["file"] in INSTALLED_CLAUDE or a["slug"] in ZCODE_SLUGS))
     payload["divisions"].append({"raw": raw, "n": n, "inst": inst})
 payload["tools"] = [{k: t[k] for k in ("id","label","icon","compat","projectOnly","main","dest","descs")} for t in TOOLS]
-payload["squads"] = {
-    "pre-lancamento": {"slugs": sorted(a["slug"] for a in agents if a["file"] in INSTALLED_CLAUDE)},
-    "treino": {"slugs": sorted(ZCODE_SLUGS)},
-}
+assert len(payload["tools"]) == meta["expectedTools"], (
+    f"TOOLS no build.py ({len(payload['tools'])}) != meta.expectedTools ({meta['expectedTools']}) "
+    "— atualize dados/meta.json ao adicionar/remover ferramenta")
+# squads vêm de dados/squads.json (mesma fonte que os instaladores usam)
+payload["squads"] = {k: {"slugs": sorted(x["slug"] for x in v["agentes"])} for k, v in squads_data.items()}
 
 HTML = r"""<!DOCTYPE html>
 <html lang="en">
@@ -953,10 +965,8 @@ document.getElementById("wNext2").addEventListener("click", ()=>{
   const toolsLbl = [...wizSel.tools].map(id=>(DATA.tools.find(t=>t.id===id)||{}).label).join(" + ");
   document.getElementById("w3sub").innerHTML = tpl("w3sub", {n: slugs.length, tools: esc(toolsLbl)});
   const cmd = OS === "windows"
-    ? "powershell -File ..\\instaladores\\instalar-windows.ps1 -Plan agency-plan.json"
-    : OS === "macos"
-      ? "bash ../instaladores/instalar-linux.sh --plan agency-plan.json"
-      : "../instaladores/instalar-linux.sh --plan agency-plan.json";
+    ? "powershell -ExecutionPolicy Bypass -File instaladores\\instalar-windows.ps1 -Plan agency-plan.json"
+    : "./instaladores/instalar-linux.sh --plan agency-plan.json";
   document.getElementById("wCmd").textContent = cmd;
   showStep(3);
 });

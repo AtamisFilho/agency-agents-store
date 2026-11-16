@@ -1,0 +1,31 @@
+{
+  "_meta": "Fonte única de verdade do build.py (gerador/build.py) e dos testes. Nada de contagens/listas hard-coded no código: quando o catálogo crescer, atualize APENAS este arquivo (e os dados traduzidos).",
+  "version": "2.2.0",
+  "ourRepo": "AtamisFilho/agency-agents-store",
+  "catalogRepo": "msitarzewski/agency-agents",
+  "expectedTools": 16,
+  "divisions": [
+    "academic", "design", "engineering", "finance", "game-development", "gis",
+    "healthcare", "marketing", "paid-media", "product", "project-management",
+    "research", "sales", "security", "spatial-computing", "specialized",
+    "support", "testing"
+  ],
+  "tags": {
+    "_comment": "tags visuais nos cards + base histórica das squads; squads em si vivem em dados/squads.json",
+    "claudeFiles": [
+      "engineering/engineering-code-reviewer.md",
+      "engineering/engineering-devops-automator.md",
+      "testing/testing-reality-checker.md",
+      "testing/testing-api-tester.md",
+      "testing/testing-test-automation-engineer.md",
+      "testing/testing-evidence-collector.md",
+      "testing/testing-accessibility-auditor.md",
+      "testing/testing-performance-benchmarker.md",
+      "security/security-penetration-tester.md",
+      "security/security-appsec-engineer.md",
+      "security/security-threat-detection-engineer.md",
+      "product/product-sprint-prioritizer.md"
+    ],
+    "zcodeSlugs": ["code-reviewer", "reality-checker", "api-tester", "sprint-prioritizer"]
+  }
+}
