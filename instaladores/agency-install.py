@@ -939,10 +939,11 @@ def main():
     # ---- --list: JSON puro, nunca rede ----
     if do_list:
         squads = load_squads()
+        have_cat = (CATALOG_DIR / ".git").is_dir() or (CATALOG_DIR / "divisions.json").is_file()
         out = {
             "version": 1,
             "catalog": ({"path": str(CATALOG_DIR), "agents": len(catalog_agents(CATALOG_DIR))}
-                        if CATALOG_DIR.is_dir() else None),
+                        if have_cat else None),  # dir só com config de idioma NÃO é catálogo
             "tools": [{"id": t["id"], "label": t["label"], "compat": t["compat"],
                        "projectOnly": t["project_only"], "dest": t["rel"],
                        "installed": tool_installed(t)} for t in TOOLS],

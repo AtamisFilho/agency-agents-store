@@ -251,6 +251,16 @@ if [[ $rc -eq 0 && ! -e "$TH/.agency-agents/.git" ]] && grep -qi "atalog not fou
 else
   FAIL=$((FAIL+1)); FAILED_NAMES+=("status-no-net"); echo "FAIL --status clonou ou não avisou (rc=$rc)"; head -5 /tmp/aa-out-noclone | sed 's/^/    /'
 fi
+# regressão CI: --list DEPOIS de --status no mesmo HOME limpa — o config cria ~/.agency-agents/
+# (sem .git/divisions.json) e --list não pode reportar catálogo falso {agents:0}
+if HOME="$TH" bash "$INSTALLER" --list </dev/null 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert d["catalog"] is None, "config-only dir não é catálogo"' 2>/dev/null; then
+  PASS=$((PASS+1)); echo "PASS --list após --status em HOME limpa: catalog=null (dir só com config)"
+else
+  FAIL=$((FAIL+1)); FAILED_NAMES+=("list-config-dir"); echo "FAIL --list reportou catálogo falso"
+fi
 rm -rf "$TH"; clean_repo_side_effects
 
 # ---------- 16. --tool/--squad não-interativo (CI/scripts) ----------
